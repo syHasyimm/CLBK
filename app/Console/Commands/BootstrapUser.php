@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\UserRole;
 use App\Models\User;
+use App\Services\AuditService;
 use App\Support\Database\WriteTransaction;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
@@ -15,10 +17,10 @@ class BootstrapUser extends Command
 
     protected $description = 'Membuat satu akun awal ketika belum ada pengguna';
 
-    public function handle(WriteTransaction $transactions): int
+    public function handle(WriteTransaction $transactions, AuditService $audit): int
     {
         if (User::query()->exists()) {
-            $this->error('Akun awal sudah tersedia. Akun tambahan dikelola pada tahap akun dan role.');
+            $this->error('Akun awal sudah tersedia. Kelola akun tambahan melalui menu Akun Pengguna.');
 
             return self::FAILURE;
         }
@@ -33,7 +35,7 @@ class BootstrapUser extends Command
         $validator = Validator::make($data, [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'password' => ['required', 'confirmed', Password::min(12)->letters()->numbers()],
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         if ($validator->fails()) {
@@ -44,16 +46,19 @@ class BootstrapUser extends Command
             return self::FAILURE;
         }
 
-        $created = $transactions->run(function () use ($data) {
+        $created = $transactions->run(function () use ($data, $audit) {
             if (User::query()->exists()) {
                 return false;
             }
 
-            User::query()->create([
+            $user = User::query()->create([
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => Hash::make($data['password']),
+                'role' => UserRole::Manager,
+                'is_active' => true,
             ]);
+            $audit->record($user, 'bootstrapped', $user, null, $audit->snapshot($user));
 
             return true;
         });

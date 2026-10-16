@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Support\Database\ReadSnapshot;
 use App\Support\Database\WriteConflict;
 use App\Support\Database\WriteTransaction;
 use Illuminate\Database\Connection;
@@ -17,6 +18,17 @@ class SqliteTransactionTest extends TestCase
     private Connection $first;
 
     private Connection $second;
+
+    public function test_report_snapshot_is_consistent_while_another_connection_can_commit_a_write(): void
+    {
+        app(ReadSnapshot::class)->run(function () {
+            $this->assertSame(1000, $this->first->table('balances')->value('amount'));
+            $this->second->transaction(fn () => $this->second->table('balances')->where('id', 1)->decrement('amount', 400));
+            $this->assertSame(1000, $this->first->table('balances')->value('amount'));
+        }, 'lock_first');
+        $this->assertSame(600, $this->first->table('balances')->value('amount'));
+        $this->assertFalse($this->first->getPdo()->inTransaction());
+    }
 
     protected function setUp(): void
     {

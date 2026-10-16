@@ -94,7 +94,7 @@ export default function UpdatePasswordForm({ className = '' }: { className?: str
                     <InputError message={errors.password_confirmation} className="mt-2" />
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     <PrimaryButton disabled={processing}>Simpan kata sandi</PrimaryButton>
 
                     <Transition

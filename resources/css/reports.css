@@ -1,0 +1,326 @@
+@page {
+    size: A4;
+    margin: 15mm;
+    @bottom-right {
+        content: 'Halaman ' counter(page) ' / ' counter(pages);
+        font:
+            8pt 'Segoe UI',
+            Arial,
+            sans-serif;
+        color: #68766d;
+    }
+}
+
+.reports-workspace {
+    font-family: 'Segoe UI Variable Text', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+}
+.report-heading {
+    font-family: 'Segoe UI Variable Display', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.035em;
+    overflow-wrap: anywhere;
+}
+.report-panel {
+    border: 1px solid #e0e7de;
+    border-radius: 1rem;
+    background: var(--card);
+}
+.report-link {
+    @apply inline-flex items-center gap-1.5 rounded-sm text-xs font-medium text-primary transition-colors hover:text-primary/70 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring;
+}
+.reports-workspace table th {
+    font-weight: 500;
+    font-size: 0.75rem;
+}
+.reports-workspace table tbody tr {
+    transition: background-color 160ms ease;
+}
+.reports-workspace table tbody tr:hover {
+    background: rgb(230 238 231 / 0.4);
+}
+
+@media print {
+    body {
+        background: white;
+        color: black;
+    }
+    .staff-layout {
+        min-height: 0;
+    }
+    .staff-sidebar,
+    .staff-skip-link,
+    .staff-header,
+    .staff-bottom-nav,
+    .staff-page-heading,
+    .cashier-menu-dialog,
+    .cashier-menu-overlay,
+    [role='status'],
+    [role='alert'] {
+        display: none !important;
+    }
+    #app > div > div {
+        padding-left: 0 !important;
+    }
+    main {
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .weighing-form {
+        padding-bottom: 0;
+    }
+    .finance-voucher {
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        overflow: visible;
+        font:
+            10pt/1.45 'Segoe UI',
+            Arial,
+            sans-serif;
+        color: #1c3027;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    .finance-voucher a {
+        text-decoration: none;
+        color: inherit;
+    }
+    .finance-voucher p,
+    .finance-voucher h3 {
+        margin: 0;
+    }
+    .voucher-brand {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6mm;
+        padding-bottom: 4mm;
+        border-bottom: 1px solid #c4d3c6;
+        break-inside: avoid;
+    }
+    .voucher-brand > div {
+        display: flex;
+        flex: 1;
+        min-width: 0;
+        align-items: center;
+        gap: 3mm;
+    }
+    .voucher-brand > div > div {
+        flex: 1;
+        min-width: 0;
+    }
+    .voucher-brand svg {
+        flex: none;
+        width: 11mm;
+        height: 11mm;
+        color: #164b37;
+    }
+    .voucher-brand p:first-child {
+        font-size: 14pt;
+        font-weight: 600;
+    }
+    .voucher-brand p + p {
+        margin-top: 1mm;
+        font-size: 8pt;
+        color: #68766d;
+    }
+    .voucher-brand > span {
+        display: block;
+        flex: none;
+        font-size: 8pt;
+        text-align: right;
+        color: #68766d;
+    }
+    .voucher-heading {
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 5mm;
+        margin: 5mm 0;
+        break-inside: avoid;
+    }
+    .voucher-heading > div {
+        flex: 1;
+        min-width: 0;
+    }
+    .voucher-heading h2 {
+        margin: 1.5mm 0;
+        font-size: 20pt;
+        line-height: 1.2;
+    }
+    .voucher-heading p {
+        font-size: 8pt;
+    }
+    .voucher-status {
+        display: inline-flex;
+        align-items: center;
+        flex: none;
+        gap: 1.5mm;
+        border: 1px solid #b9cbbb;
+        padding: 2mm 3mm;
+        font-size: 8pt;
+        color: #164b37;
+    }
+    .voucher-status-reversed {
+        color: #9e3d29;
+        background: #fff3ef;
+        border-color: #e4c3b9;
+    }
+    .voucher-status svg {
+        width: 3mm;
+        height: 3mm;
+    }
+    .voucher-total {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 5mm;
+        margin-bottom: 5mm;
+        padding: 4mm;
+        background: #edf3ed;
+        border: 1px solid #d9e4d8;
+        border-radius: 2mm;
+        break-inside: avoid;
+    }
+    .voucher-total > div {
+        flex: 1;
+        min-width: 0;
+    }
+    .voucher-total p {
+        font-size: 8pt;
+        color: #164b37;
+    }
+    .voucher-total p + p {
+        margin-top: 1mm;
+        font-size: 7.5pt;
+        color: #68766d;
+    }
+    .voucher-total strong {
+        flex: none;
+        font-size: 21pt;
+        color: #164b37;
+    }
+    .voucher-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 3mm 8mm;
+        margin: 0;
+    }
+    .voucher-meta > div {
+        break-inside: avoid;
+    }
+    .voucher-meta dt {
+        font-size: 8pt;
+        color: #68766d;
+    }
+    .voucher-meta dd {
+        margin: 1mm 0 0;
+        font-size: 9pt;
+        line-height: 1.4;
+    }
+    .voucher-context {
+        margin-top: 4mm;
+        padding-top: 3mm;
+        font-size: 9pt;
+    }
+    .voucher-context p + p,
+    .voucher-annotations p + p {
+        margin-top: 2mm;
+    }
+    .voucher-allocations {
+        margin-top: 5mm;
+    }
+    .voucher-allocations > div:first-child {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2mm;
+    }
+    .voucher-allocations h3 {
+        font-size: 10pt;
+    }
+    .voucher-allocations > div:first-child > span {
+        font-size: 8pt;
+        color: #68766d;
+    }
+    .voucher-table-wrap {
+        overflow: visible;
+        border-radius: 0;
+    }
+    .voucher-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9pt;
+    }
+    .voucher-table th {
+        background: #e6eee7;
+        color: #164b37;
+        font-size: 8pt;
+    }
+    .voucher-table td,
+    .voucher-table th {
+        padding: 2.5mm 3mm;
+        text-align: left;
+        border-bottom: 1px solid #e2e8df;
+    }
+    .voucher-table td:last-child,
+    .voucher-table th:last-child {
+        text-align: right;
+    }
+    .voucher-table tfoot {
+        font-weight: 600;
+        background: #edf3ed;
+    }
+    .voucher-table thead {
+        display: table-header-group;
+    }
+    .voucher-table tfoot {
+        display: table-row-group;
+    }
+    .voucher-annotations {
+        margin-top: 4mm;
+        padding-top: 3mm;
+        font-size: 8.5pt;
+    }
+    .voucher-reversal {
+        margin-top: 4mm;
+        padding: 3mm;
+        background: #fff3ef;
+        border: 1px solid #e4c3b9;
+        font-size: 8pt;
+        break-inside: avoid;
+    }
+    .voucher-reversal p {
+        margin-top: 1.5mm;
+    }
+    .voucher-reversal h3 {
+        color: #9e3d29;
+    }
+    .voucher-signatures {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 6mm;
+        gap: 10mm;
+        font-size: 8pt;
+        break-inside: avoid;
+    }
+    .signature-line {
+        height: 12mm;
+        border-bottom: 1px solid #c4cfc4;
+        margin-bottom: 2mm;
+    }
+    .voucher-footer {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 5mm;
+        padding-top: 3mm;
+        font-size: 7.5pt;
+        color: #68766d;
+        border-top: 1px solid #c4d3c6;
+        break-inside: avoid;
+    }
+    .finance-voucher tr {
+        break-inside: avoid;
+    }
+}

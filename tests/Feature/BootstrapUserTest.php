@@ -2,9 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\Hash;
+use Tests\Concerns\DatabaseMigrations;
 use Tests\TestCase;
 
 class BootstrapUserTest extends TestCase
@@ -22,6 +23,8 @@ class BootstrapUserTest extends TestCase
 
         $user = User::query()->sole();
         $this->assertTrue(Hash::check('InitialAccount123', $user->password));
+        $this->assertSame(UserRole::Manager, $user->role);
+        $this->assertTrue($user->is_active);
     }
 
     public function test_bootstrap_cannot_add_an_account_when_users_already_exist(): void

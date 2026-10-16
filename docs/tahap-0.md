@@ -1,6 +1,6 @@
 # Hasil implementasi tahap 0
 
-Tanggal pemeriksaan: 9 Oktober 2026. Acuan: tahap 0 pada `prd.md`.
+Tanggal pemeriksaan: 9 Oktober 2026. Acuan: tahap 0 pada `prd.md`. Catatan ini merekam hasil fondasi; perkembangan sesudahnya terdapat di [hasil tahap 1](tahap-1.md).
 
 ## Fondasi web yang tersedia
 
@@ -29,7 +29,7 @@ PHP minimum proyek adalah 8.4 karena integrasi transaksi IMMEDIATE pada framewor
 | Login browser dengan akun uji | Berhasil membuka dashboard |
 | Profil browser | Formulir tampil, tidak ada kesalahan console saat diperiksa |
 | Logout browser | Berhasil kembali ke halaman masuk |
-| Layout browser pada ukuran jendela Tauri 1280 × 820 | Tampil dengan baik |
+| Layout browser komputer pada ukuran 1280 × 820 | Tampil dengan baik |
 | Kebersihan data uji | Akun uji browser sudah dihapus |
 
 Pengujian otomatis meliputi kredensial salah, batas percobaan login, halaman yang memerlukan autentikasi, pemulihan kata sandi, perubahan profil/kata sandi, penolakan pendaftaran publik, penolakan penghapusan akun, akun awal, pemeriksaan CSRF yang diaktifkan secara nyata, serta pergantian ID sesi setelah login.
@@ -40,24 +40,6 @@ Temuan kompatibilitas Breeze sudah diselesaikan: tipe Node scaffold diperbarui a
 
 Screenshot halaman masuk: [login.jpg](screenshots/login.jpg).
 
-## Desktop
-
-Source Tauri 2.12.1, CLI, Cargo.lock, icon desktop, konfigurasi URL runtime, validasi HTTPS/origin, pembatasan navigasi, penolakan jendela baru, dan halaman kegagalan koneksi sudah disiapkan. Konten remote tidak memperoleh capability native.
-
-Rust 1.99.0, rustfmt, Build Tools 2022, Windows SDK, dan WebView2 155.0.4283.45 tersedia. Pemasangan compiler standar sempat gagal karena ruang drive C; komponen MSVC minimum berhasil dipasang di `.tools/vs-buildtools` pada drive D.
-
-| Pemeriksaan desktop | Hasil |
-| --- | --- |
-| Prasyarat dari `tauri info` | Tersedia |
-| Format Rust | Lolos |
-| `cargo test --locked` | 3 lolos |
-| `tauri build --debug` | Berhasil membuat executable Windows |
-| Interaksi login/logout dan sesi dalam WebView | Menunggu pemeriksaan manual |
-
-Executable terdapat di `desktop/src-tauri/target/debug/clbk-toke-desktop.exe`. Pengujian Rust memeriksa validasi HTTPS/localhost, penolakan kredensial/path/query pada alamat server, dan pembatasan origin termasuk host palsu serta perubahan port/skema.
-
-Kontrol interaksi aplikasi Windows tidak tersedia pada sesi otomasi ini. Karena itu koneksi WebView, login/logout desktop, persistensi cookie setelah aplikasi dibuka ulang, CSRF dalam WebView, dan halaman kegagalan koneksi runtime belum dinyatakan terverifikasi. **Tahap 0 belum ditutup sepenuhnya sampai pemeriksaan manual desktop selesai.** Kode fondasi web dan executable desktop sudah dapat ditinjau; tahap 1 belum dimulai.
-
 ## Batas tahap
 
-Tahap 1 belum dimulai. Belum ada role, CRUD konsumen/anggota/mobil/pabrik, timbangan, penjualan, pembayaran, gaji, pengeluaran, atau laporan bisnis. Aturan berat manual penjualan pabrik dan penjualan sortir tetap mengikuti PRD untuk tahap modul terkait.
+Pada akhir pekerjaan fondasi, role dan modul master belum tersedia. Keduanya sekarang ditangani pada tahap 1. Timbangan, penjualan, pembayaran, gaji, pencatatan pengeluaran, dan laporan bisnis mengikuti tahap berikutnya. Aturan berat manual penjualan pabrik dan penjualan sortir tetap mengikuti PRD untuk tahap modul terkait.

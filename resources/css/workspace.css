@@ -1,0 +1,289 @@
+.staff-main {
+    padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+    @variant lg {
+        padding-bottom: 2.5rem;
+    }
+}
+
+.staff-header {
+    padding-top: env(safe-area-inset-top, 0px);
+}
+
+.staff-navigation-scroll {
+    scrollbar-gutter: stable;
+}
+
+@media (forced-colors: none) {
+    .staff-navigation-scroll {
+        --navigation-scrollbar-thumb: color-mix(in srgb, var(--primary) 58%, var(--card));
+        scrollbar-width: thin;
+        scrollbar-color: var(--navigation-scrollbar-thumb) transparent;
+    }
+
+    .staff-navigation-scroll:hover,
+    .staff-navigation-scroll:focus-within {
+        --navigation-scrollbar-thumb: color-mix(in srgb, var(--primary) 76%, var(--card));
+    }
+
+    @supports selector(::-webkit-scrollbar) {
+        .staff-navigation-scroll {
+            scrollbar-width: auto;
+            scrollbar-color: auto;
+        }
+
+        .staff-navigation-scroll::-webkit-scrollbar {
+            width: 0.5rem;
+            height: 0.5rem;
+        }
+
+        .staff-navigation-scroll::-webkit-scrollbar-track {
+            margin-block: 0.5rem;
+            background: transparent;
+        }
+
+        .staff-navigation-scroll::-webkit-scrollbar-thumb {
+            min-height: 2.5rem;
+            border: 2px solid transparent;
+            border-radius: 999px;
+            background-color: var(--navigation-scrollbar-thumb);
+            background-clip: padding-box;
+        }
+
+        .staff-navigation-scroll::-webkit-scrollbar-thumb:hover,
+        .staff-navigation-scroll::-webkit-scrollbar-thumb:active {
+            background-color: var(--primary);
+        }
+
+        .staff-navigation-scroll::-webkit-scrollbar-button {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
+        .staff-navigation-scroll::-webkit-scrollbar-corner {
+            background: transparent;
+        }
+    }
+}
+
+.staff-bottom-nav {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -4px 24px rgb(22 75 55 / 0.04);
+}
+
+.weighing-form {
+    padding-bottom: 6rem;
+}
+
+.weighing-actions-dock {
+    position: fixed;
+    inset-inline: 0;
+    bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+    z-index: 20;
+
+    @variant md {
+        bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    @variant lg {
+        inset-inline-start: 16rem;
+        bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+.cashier-menu-trigger {
+    @apply flex min-h-14 min-w-0 flex-col items-center justify-end gap-0.5 rounded-xl px-1 pb-2 text-center text-[10px] font-semibold leading-tight text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:text-xs;
+}
+
+.cashier-menu-trigger-icon {
+    @apply flex size-14 shrink-0 items-center justify-center rounded-[1.25rem] border-[5px] border-card bg-primary text-primary-foreground;
+    margin-top: -1.25rem;
+    box-shadow: 0 6px 16px rgb(22 75 55 / 0.2);
+    transition:
+        transform 200ms ease,
+        background-color 200ms ease,
+        box-shadow 200ms ease;
+}
+
+.cashier-menu-trigger:hover .cashier-menu-trigger-icon {
+    transform: translateY(-2px);
+    background-color: #206447;
+}
+
+.cashier-menu-trigger:active .cashier-menu-trigger-icon {
+    transform: scale(0.95);
+}
+
+.cashier-menu-trigger-active .cashier-menu-trigger-icon {
+    background-color: #206447;
+    box-shadow:
+        0 6px 16px rgb(22 75 55 / 0.25),
+        0 0 0 2px var(--secondary);
+}
+
+.cashier-menu-dialog {
+    --cashier-menu-y: 0px;
+    left: 50%;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    width: calc(100% - 1.5rem);
+    max-width: 34rem;
+    max-height: calc(100dvh - 2rem - env(safe-area-inset-bottom, 0px));
+    transform: translate(-50%, var(--cashier-menu-y));
+    box-shadow: 0 24px 80px rgb(22 75 55 / 0.18);
+}
+
+.cashier-menu-footer {
+    padding-bottom: 1rem;
+}
+
+.cashier-menu-link {
+    transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        transform 180ms ease;
+}
+
+.cashier-menu-link:active {
+    transform: scale(0.97);
+}
+
+.cashier-menu-overlay[data-state='open'] {
+    animation: cashier-menu-fade-in 220ms ease-out;
+}
+
+.cashier-menu-overlay[data-state='closed'] {
+    animation: cashier-menu-fade-out 180ms ease-in;
+}
+
+.cashier-menu-dialog[data-state='open'] {
+    animation: cashier-menu-in 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cashier-menu-dialog[data-state='closed'] {
+    pointer-events: none;
+    animation: cashier-menu-out 180ms ease-in;
+}
+
+.cashier-menu-dialog[data-state='open'] .cashier-menu-link {
+    animation: cashier-menu-link-in 240ms ease-out var(--cashier-menu-link-delay, 0ms) both;
+}
+
+.cashier-menu-link:nth-child(2n) {
+    --cashier-menu-link-delay: 25ms;
+}
+
+.cashier-menu-link:nth-child(n + 3) {
+    --cashier-menu-link-delay: 50ms;
+}
+
+.cashier-menu-link:nth-child(n + 5) {
+    --cashier-menu-link-delay: 90ms;
+}
+
+.cashier-menu-link:nth-child(n + 7) {
+    --cashier-menu-link-delay: 130ms;
+}
+
+@keyframes cashier-menu-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes cashier-menu-fade-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes cashier-menu-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, calc(var(--cashier-menu-y) + 1.75rem)) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, var(--cashier-menu-y)) scale(1);
+    }
+}
+
+@keyframes cashier-menu-out {
+    from {
+        opacity: 1;
+        transform: translate(-50%, var(--cashier-menu-y)) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, calc(var(--cashier-menu-y) + 1rem)) scale(0.98);
+    }
+}
+
+@keyframes cashier-menu-link-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (width >= 640px) {
+    .cashier-menu-dialog {
+        --cashier-menu-y: -50%;
+        top: 50%;
+        bottom: auto;
+        max-height: calc(100dvh - 3rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cashier-menu-dialog,
+    .cashier-menu-overlay,
+    .cashier-menu-dialog .cashier-menu-link {
+        animation: none !important;
+    }
+
+    .cashier-menu-trigger-icon,
+    .cashier-menu-link {
+        transition: none;
+        transform: none !important;
+    }
+}
+
+.staff-nav-item {
+    @apply flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center text-[10px] font-medium leading-tight text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring active:bg-secondary sm:text-xs;
+}
+
+.staff-nav-item-active {
+    @apply bg-secondary text-primary;
+}
+
+@media (width < 640px) {
+    .staff-layout input:not([type='checkbox']):not([type='radio']),
+    .staff-layout select,
+    .staff-layout textarea {
+        font-size: 1rem;
+        min-height: 2.75rem;
+    }
+
+    .staff-layout button,
+    .staff-layout a[data-slot='button'] {
+        min-height: 2.75rem;
+    }
+
+    .staff-layout h1 {
+        overflow-wrap: anywhere;
+    }
+
+    .staff-record-value .whitespace-nowrap {
+        white-space: normal;
+    }
+}

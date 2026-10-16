@@ -40,6 +40,7 @@
             "@php scripts/prepare-environment.php",
             "@php artisan config:clear",
             "@php artisan migrate --force",
+            "@php artisan db:seed --force",
             "npm install",
             "npm run build"
         ],

@@ -1,8 +1,22 @@
 # PRD — CLBK TOKE
 
 > Rencana produk dan implementasi aplikasi pengelolaan usaha toke sawit.
-> Status: rancangan siap menjadi acuan pengembangan; belum merupakan aplikasi yang diimplementasikan.
+> Status: aplikasi web dan tahap 1–6 PRD telah diimplementasikan. Tahap 6 mencakup backup/restore terverifikasi, monitoring, dan konfigurasi deployment Coolify dengan Nginx + PHP-FPM. Pengujian browser perangkat nyata, cetak, dan verifikasi server produksi tetap perlu dilakukan. Penyederhanaan workflow tahap 1–4 selesai; pemeriksaan akhir workflow merupakan acuan terpisah.
 > Bahasa antarmuka: Indonesia. Mata uang: Rupiah. Satuan tampilan berat: kilogram.
+
+**Acuan workflow terbaru:** [rencana workflow sederhana](docs/rencana-workflow-sederhana.md). Transaksi baru langsung memilih mobil, timbangan cukup konsumen/TBS/sortir/anggota, penjualan pabrik hanya memakai berat bersih dengan harga otomatis, dan penjualan sortir memakai berat serta harga manual. Muatan Mobil dan Stok Sortir sudah dihapus dari menu, halaman, dan URL operasional. Ketentuan perjalanan, retur, FIFO, dan laba per nota dalam bagian lama di bawah ini menjadi acuan histori, bukan workflow transaksi baru. Seluruh Data Master tetap seperti sekarang. [Tahap 1 transisi data](docs/workflow-sederhana-tahap-1.md), [tahap 2 Timbang Sawit](docs/workflow-sederhana-tahap-2.md), serta [tahap 3–4 penjualan dan pembersihan workflow](docs/workflow-sederhana-tahap-3-4.md) selesai. Timbangan dan penjualan baru disimpan sah dalam satu langkah, dengan harga terkunci dan pembayaran/penerimaan terpisah. Penjualan pabrik dan sortir sama-sama dibayar melalui [Penerimaan Penjualan](docs/penerimaan-semua-penjualan.md). Dashboard/Laporan menggunakan selisih transaksi periode tanpa menghitung pembayaran konsumen atau gaji sebagai biaya lagi; pengeluaran tidak memakai perjalanan. [Tahap 5 PRD: Dashboard dan laporan](docs/tahap-5.md) telah diimplementasikan sesuai workflow ini. Tahap 5 dalam rencana penyederhanaan tetap merupakan pemeriksaan akhir workflow yang terpisah.
+
+**Keuntungan bersih Dashboard (pilihan pengguna terbaru):** untuk periode yang dipilih, pendapatan penjualan pabrik + sortir − pembelian buah − hak upah muat − pengeluaran operasional. Label ini menggantikan Selisih transaksi periode pada Dashboard, laporan, CSV, dan cetak. Pembayaran konsumen/gaji tidak dihitung sebagai biaya kedua kali. Angka tersedia bagi manajer ketika semua mobil dipilih; pembelian dan penjualan dapat terjadi pada tanggal yang berbeda. Rincian tampilan tersedia pada [pembaruan Dashboard](docs/redesain-dashboard.md).
+
+**Penugasan mobil supir (pembaruan terbaru):** manajer menetapkan satu mobil aktif per akun supir melalui Kelola Pengguna. Mobil otomatis terkunci pada Timbang Sawit, Penjualan Pabrik, dan Penjualan Sortir. Supir tanpa mobil aktif tidak dapat mencatat transaksi baru. Pergantian mobil memerlukan muat ulang form lama dan tidak mengubah mobil/hak akses pada transaksi terdahulu. [Implementasi dan pemakaian penugasan mobil](docs/penugasan-mobil-supir.md).
+
+**Tampilan Penjualan Pabrik:** daftar nota memakai filter berlabel, rincian berat/nilai/penerimaan, serta susunan khusus layar kecil. Form pencatatan membagi tujuan, hasil timbang, dan informasi nota, dengan ringkasan nilai bersih yang menonjol. [Pembaruan tampilan dan verifikasi](docs/redesain-penjualan-pabrik.md).
+
+**Gaji Karyawan Muat:** daftar karyawan dan Periksa & Bayar memakai tampilan baru. Seluruh sisa upah dalam periode otomatis menjadi dasar pembayaran, dengan satu bagian rincian semua riwayat timbang dan tanpa pemilihan tiket. Nominal awal terisi sisa periode serta dapat dikurangi untuk pembayaran sebagian dari timbangan tertua. Cakupan tanggal pada daftar dibawa ke halaman pembayaran. [Pembaruan UI dan pembayaran seluruh periode](docs/redesain-gaji-karyawan-muat.md).
+
+**Navigasi admin, kasir, dan supir (pembaruan terbaru):** kasir memiliki menu Dashboard, Harga & Upah Muat, Laporan, Profil Saya, Uang Penimbang, Gaji Karyawan Muat, Riwayat Penggajian Karyawan, Penerimaan Penjualan, Uang Keluar Harian, serta Kas Usaha. Admin/manajer memakai tampilan sidebar dan navigasi ponsel yang sama dengan kasir, dengan seluruh 20 tautan operasional, keuangan, data master, administrasi, dan profil tetap tersedia. Supir memiliki Dashboard, Timbang Sawit, Tambah Konsumen, Penjualan Pabrik, Penjualan Sortir, dan Profil Saya; halaman Harga serta Laporan, CSV, dan cetak laporan tidak tersedia untuk supir. Seluruh role memakai navigasi bawah di ponsel/tablet dan sidebar mulai lebar 1.024 px. Header menampilkan nama usaha/halaman, role, serta tombol keluar tanpa tombol profil. Profil Saya tersedia melalui navigasi. Uang Penimbang dan Periksa Pembayaran admin/kasir hanya menampilkan kartu tiket yang belum lunas; voucher serta riwayat pembayaran tetap tersimpan. [Rincian navigasi dan verifikasi](docs/navigasi-mobile-kasir-supir.md).
+
+**Tampilan Laporan dan cetak:** halaman kasir/manajer memakai filter berkelompok, ringkasan angka, cakupan filter aktif, serta rincian yang menyesuaikan layar kecil. Seluruh laporan dan voucher cetak/PDF memakai identitas usaha, total yang jelas, tabel berulang lintas halaman, serta nomor halaman; voucher memiliki ruang tanda tangan dan penjelasan status pembalikan. [Pembaruan desain dan pemeriksaan cetak](docs/redesain-laporan-dan-cetak.md).
 
 ## 1. Tujuan produk
 
@@ -39,7 +53,6 @@ Sistem harus menjawab pertanyaan berikut dengan jelas:
 | Autentikasi | Laravel Breeze, dengan verifikasi kompatibilitas pada tahap fondasi. |
 | Database | SQLite pada disk lokal server. |
 | Styling dan komponen | TailwindCSS + shadcn/ui. |
-| Desktop | Tauri 2 sebagai aplikasi desktop yang mengakses server yang sama. |
 
 ### 2.2 Lingkup MVP
 
@@ -54,9 +67,9 @@ Sistem harus menjawab pertanyaan berikut dengan jelas:
 - Uang Keluar Harian untuk biaya operasional.
 - Laporan transaksi, stok, utang, upah, kas, dan laba.
 - Pengelolaan akun, role, audit transaksi, dan backup database.
-- Web responsif untuk komputer dan browser ponsel; paket desktop untuk Windows.
+- Web responsif untuk browser komputer dan ponsel.
 
-Pembayaran sebagian dimasukkan agar sisa utang tetap akurat. Antarmuka utama tetap menyediakan aksi **Lunaskan** dan dua tab **Belum Lunas / Lunas** sesuai kebutuhan pengguna.
+Pembayaran sebagian dimasukkan agar sisa utang tetap akurat. Uang Penimbang hanya menyediakan kartu timbangan **Belum Lunas**, termasuk yang dibayar sebagian; pembayaran yang lunas tetap tersimpan pada riwayat voucher. Daftar Gaji Karyawan Muat tetap menyediakan status **Belum Lunas / Lunas**.
 
 ### 2.3 Di luar MVP
 
@@ -103,13 +116,17 @@ Role aplikasi dibatasi menjadi `manager`, `driver`, dan `cashier`. Anggota muat 
 |---|---|---|---|
 | Dashboard operasional | Semua | Muatan dan transaksi yang ditugaskan | Ringkasan pembayaran dan kas |
 | Laba dan laporan keuangan penuh | Ya | Tidak | Laporan kas/pembayaran sesuai tugas |
+| Halaman Harga & Upah Muat | Lihat dan terbitkan | Tidak; tarif transaksi tetap otomatis | Lihat dan terbitkan harga beli, upah muat, serta harga pabrik |
+| Halaman Laporan, ekspor CSV, dan cetak laporan | Semua jenis | Tidak | Semua kecuali audit; tanpa laba bersih |
 | Input dan konfirmasi timbang | Ya | Ya, pada trip yang ditugaskan | Lihat untuk pembayaran |
 | Input dan posting penjualan pabrik | Ya | Ya, pada trip yang ditugaskan | Lihat dan catat penerimaan uang |
 | Input dan posting penjualan sortir | Ya | Ya, untuk sumber trip yang ditugaskan | Lihat dan catat penerimaan uang |
-| Mengubah harga beli dan tarif muat | Ya | Lihat yang diperlukan | Lihat harga tiket |
-| Mengubah harga referensi pabrik | Ya | Lihat dan input harga aktual nota | Lihat |
+| Mengubah harga beli dan tarif muat | Ya | Lihat yang diperlukan | Ya, sebagai versi baru dengan audit |
+| Mengubah harga referensi pabrik | Ya | Lihat dan input harga aktual nota | Ya, sebagai versi baru dengan audit |
 | Membayar konsumen | Ya | Tidak | Ya |
+| Menambahkan konsumen aktif | Ya | Ya, melalui Tambah Konsumen | Tidak |
 | Membayar gaji anggota muat | Ya | Tidak | Ya |
+| Riwayat Penggajian Karyawan | Ya | Tidak | Ya |
 | Mencatat biaya operasional harian | Ya | Tidak | Ya |
 | CRUD konsumen, anggota, mobil, pabrik | Ya | Pilih referensi aktif | Pilih referensi aktif |
 | Mengubah akun, role, pengaturan | Ya | Tidak | Tidak |
@@ -131,7 +148,7 @@ Komponen utama:
 - Card pendapatan penjualan, laba kotor, dan laba bersih operasional hari ini.
 - Pendapatan mengikuti input penjualan manual. Bila suatu penjualan belum mempunyai biaya asal dari tiket terkait, laba ditampilkan **Belum lengkap**; biaya yang tidak tersedia tidak dianggap nol.
 - Card total utang konsumen, utang upah, piutang penjualan, dan saldo akun kas.
-- Daftar muatan mobil: nomor trip, plat, supir, berat muatan awal manual, berat sortir pabrik, berat bersih diterima, status, dan tujuan pabrik. Sebelum supir mencatat timbang pabrik, berat diberi label **Belum dicatat**.
+- Daftar muatan mobil: nomor trip, plat, supir, total berat internal, berat sortir pabrik, berat bersih diterima, status, dan tujuan pabrik. Sebelum supir mencatat timbang pabrik, berat diberi label **Belum dicatat**.
 - Daftar pekerjaan tertunda: muatan belum dijual, retur belum selesai, stok sortir, dan tagihan belum lunas.
 - Filter tanggal/periode dan tautan dari angka ringkasan ke transaksi sumber.
 
@@ -174,7 +191,7 @@ Modul **Muatan Mobil** mencatat perjalanan dan hasil timbang manual dari supir.
 Alur ditetapkan:
 
 1. Supir memilih mobil, membuat perjalanan, dan mengantar buah ke pabrik.
-2. Di pabrik, mobil/muatan ditimbang pertama kali. Supir memasukkan **berat muatan awal** secara manual dari hasil timbang tersebut.
+2. Di pabrik, mobil/muatan ditimbang. Formulir penjualan tidak meminta berat muatan awal.
 3. Pekerja muat pabrik memilih buah yang diterima dan memisahkan buah sortir. Supir memasukkan **berat buah sortir pabrik** secara manual.
 4. Setelah pemilahan, dilakukan timbang bersih sawit yang diterima pabrik. Supir memasukkan **berat bersih diterima pabrik** secara manual.
 5. Berat bersih terakhir menjadi dasar penjualan TBS ke pabrik.
@@ -182,12 +199,12 @@ Alur ditetapkan:
 
 Aturan perjalanan:
 
-- Berat muatan awal berasal dari input supir, bukan penjumlahan timbang konsumen. Tidak ada kewajiban mengambil semua tiket konsumen pada hari tersebut.
-- Berat muatan awal berarti berat buah sebelum sortir, tidak termasuk berat mobil kosong.
+- Formulir hanya meminta berat sortir dan berat bersih diterima pabrik. Total berat untuk perhitungan biaya internal adalah jumlah keduanya; tidak mengambil jumlah timbang konsumen hari itu.
+- Kolom berat muatan awal pada penyimpanan nota tetap dipertahankan untuk kompatibilitas data lama. Pada formulir baru nilainya dihitung sistem, bukan diinput pengguna.
 - Aksi **Berangkat** mencatat keberangkatan dan membekukan referensi tiket serta biaya kategori TBS yang sudah terkait. Biaya sortir awal tetap berada pada lot sortir awalnya. Berat hasil pabrik tidak wajib tersedia saat berangkat karena baru diinput setelah timbang di pabrik.
 - Tiket yang terkait digunakan untuk biaya pembelian dan upah, tanpa mengganti atau memvalidasi berat manual supir terhadap total tiket.
 - Satu mobil mempunyai satu perjalanan aktif (`loading` atau `dispatched`) pada satu waktu. Sesudah hasil pabrik dicatat, mobil dapat membuka perjalanan baru meskipun sortir perjalanan sebelumnya belum habis dijual.
-- Ketiga input berat pabrik dikunci saat nota diposting. Penutupan perjalanan dilakukan setelah nota dan stok terkait direkonsiliasi; pembayaran konsumen/upah tetap terpisah.
+- Berat sortir dan berat bersih diterima dikunci saat nota diposting. Penutupan perjalanan dilakukan setelah nota dan stok terkait direkonsiliasi; pembayaran konsumen/upah tetap terpisah.
 - Perjalanan yang hanya menangani sortir dapat selesai tanpa nota pabrik setelah penjualan dan stok sortir selesai dicatat.
 
 ### 5.4 Jual Sawit ke Pabrik
@@ -196,12 +213,12 @@ Alur:
 
 1. Pilih mobil lalu pilih trip berstatus `dispatched`.
 2. Pilih pabrik aktif.
-3. Supir memasukkan berat muatan awal secara manual dari timbang pertama di pabrik.
+3. Formulir tidak menampilkan input berat muatan awal.
 4. Setelah pekerja pabrik memilah buah, supir memasukkan berat sortir pabrik secara manual.
 5. Setelah timbang bersih berikutnya, supir memasukkan berat bersih sawit yang diterima pabrik secara manual.
 6. Input nomor nota dan waktu penjualan. Sistem memakai input berat bersih terakhir langsung sebagai berat penjualan TBS.
-7. Input harga jual aktual per kg dan potongan nota dalam rupiah, disertai alasan.
-8. Tampilkan tiga input berat, nilai nota, selisih rekonsiliasi, dan stok sortir pabrik.
+7. Harga jual terisi otomatis dari riwayat harga pabrik yang berlaku pada waktu penjualan dan tidak dapat diedit. Input potongan nota dalam rupiah tanpa input alasan potongan.
+8. Tampilkan berat sortir, berat bersih diterima, harga otomatis, dan nilai nota. Halaman detail tidak menampilkan input alasan persetujuan selisih berat maupun unggah bukti.
 9. Posting penjualan mengunci nota dan membentuk stok retur serta piutang penjualan.
 10. Kasir/manajer mencatat penerimaan uang; jika langsung dibayar, kedua proses dapat dijalankan dalam satu transaksi backend.
 
@@ -209,11 +226,12 @@ MVP memakai satu nota pabrik per trip. Pemecahan satu trip ke beberapa pabrik me
 
 ```text
 berat_diterima_pabrik = input_manual_berat_bersih_setelah_sortir
-selisih_timbang = input_manual_berat_muatan_awal - input_manual_berat_sortir - berat_diterima_pabrik
+total_berat_internal = input_manual_berat_sortir + berat_diterima_pabrik
+selisih_nota_baru = total_berat_internal - input_manual_berat_sortir - berat_diterima_pabrik = 0
 nilai_nota = round(berat_diterima_kg × harga_jual_snapshot) - potongan_nota
 ```
 
-Berat muatan awal harus lebih dari nol, berat sortir tidak negatif dan tidak melebihi muatan awal, serta berat bersih diterima lebih dari nol. Berat bersih setelah sortir **tidak dikurangi sortir lagi**. Nilai nota tidak boleh negatif. Selisih hanya berasal dari tiga input manual tersebut; sistem tidak membandingkannya dengan total timbang konsumen. Selisih negatif atau selisih di atas 2% dari muatan awal memerlukan persetujuan manajer dan alasan sebelum posting.
+Berat sortir tidak negatif, berat bersih diterima lebih dari nol, dan jumlah keduanya tidak melebihi batas penyimpanan berat. Berat bersih setelah sortir **tidak dikurangi sortir lagi**. Nilai nota tidak boleh negatif. Sistem tidak membandingkan berat dengan total timbang konsumen. Data lama yang mempunyai selisih negatif atau selisih di atas toleransi tetap membutuhkan persetujuan manajer atas versi draft terbaru, melalui tombol tanpa input alasan. Catatan persetujuan standar dibuat sistem untuk riwayat audit. Potongan pabrik tanpa alasan memakai catatan standar sistem agar tetap kompatibel dengan aturan database. Bukti lama tetap dapat dilihat; formulir unggah bukti pabrik dihilangkan.
 
 ### 5.5 Penjualan Buah Sortir / Pengantaran Sortir
 
@@ -252,16 +270,13 @@ Contoh wajib:
 - Konsumen A mengambil uang besok: haknya dihitung dari Rp3.000/kg.
 - Tiket B yang ditimbang sesudah perubahan memakai Rp2.900/kg.
 
-Harga pabrik disimpan terpisah pada riwayat harga pabrik. Saat menjual, harga referensi hanya menjadi nilai awal; harga aktual nota tetap disalin dan dikunci pada penjualan.
+Harga pabrik disimpan terpisah pada riwayat harga pabrik. Saat menjual, sistem mengambil versi harga yang berlaku untuk pabrik dan waktu penjualan, lalu menyimpan ID versi serta harga sebagai snapshot. Harga tidak dapat diedit pada formulir; backend mengabaikan harga yang dikirim browser. Bila harga belum tersedia, draft tidak dapat disimpan. Nota yang telah disahkan tetap memakai snapshot saat harga pabrik berubah.
 
 ### 5.7 Uang Penimbang / Pembayaran Konsumen
 
-Dua tab utama:
+Daftar utama hanya menampilkan konsumen dengan tiket yang masih mempunyai sisa hak; pembayaran sebagian diberi badge **Sebagian**. Tiket lunas tidak ditampilkan pada kartu konsumen maupun kartu pilihan Periksa Pembayaran. Penyaringan dilakukan sebelum pratinjau dan pagination, sehingga tiket yang belum lunas tetap tersedia di halaman pertama meskipun memiliki banyak riwayat lunas.
 
-- **Belum Lunas**: konsumen dengan tiket yang masih mempunyai sisa hak; pembayaran sebagian diberi badge **Sebagian**.
-- **Lunas**: tiket/tagihan yang sudah habis dibayar, dapat difilter konsumen dan tanggal.
-
-Card per konsumen menampilkan nama, daftar tiket, tanggal timbang, berat, harga snapshot tiap kategori, total hak, total dibayar, sisa, dan pembayaran terakhir.
+Card per konsumen menampilkan nama, daftar tiket belum lunas, tanggal timbang, berat, harga snapshot tiap kategori, total hak, total dibayar, sisa, dan pembayaran terakhir. Jumlah tiket dan nominal kartu mengikuti tiket yang masih memiliki sisa. Ringkasan periode pada Periksa Pembayaran tetap mencakup semua hak/pembayaran dalam periode, sedangkan pilihan pembayaran hanya memuat tiket belum lunas. Setelah seluruhnya lunas, kartu/form pembayaran diganti keadaan kosong; voucher, rincian timbang, dan riwayat pembayaran tetap tersimpan. Pembalikan pembayaran mengembalikan tiket ke daftar belum lunas. Ketentuan ini berlaku untuk admin/manajer serta kasir.
 
 Aksi **Bayar** atau **Lunaskan**:
 
@@ -274,6 +289,8 @@ Aksi **Bayar** atau **Lunaskan**:
 
 Pelunasan mengalokasikan ke tiket tertua yang dipilih. Satu voucher tidak boleh berisi tiket dari konsumen berbeda. Pembayaran berlebih ditolak; saldo titipan tidak termasuk MVP.
 
+Pembaruan kas tunggal: admin/manajer dan kasir memakai satu Kas Usaha untuk seluruh penerimaan serta pembayaran. Manajer memiliki tombol **Buat Kas Usaha** di halaman kas, hanya aktif ketika belum ada akun kas. Pembuatan kas pertama dimulai dengan saldo Rp0, kode internal otomatis, dan audit. Setelah satu akun tercatat, tombol dinonaktifkan dan server menolak penambahan akun, termasuk ketika akun lama nonaktif. Metode tunai/transfer tetap dicatat, tetapi pengguna tidak memilih akun kas lain. Saldo dan mutasi lama tetap tersimpan. Penambahan konsumen aktif tersedia untuk supir melalui formulir khusus dan langsung mengisi pilihan konsumen pada formulir timbang; daftar, pengubahan, dan penghapusan master tetap dikelola manajer.
+
 ### 5.8 Kelola Anggota Muat
 
 - Tambah, lihat, ubah, nonaktifkan, dan hapus anggota yang belum memiliki referensi transaksi.
@@ -283,7 +300,7 @@ Pelunasan mengalokasikan ke tiket tertua yang dipilih. Satu voucher tidak boleh 
 
 ### 5.9 Gaji Karyawan Muat
 
-Card anggota menampilkan jumlah pekerjaan/tiket pada periode, total dasar berat, rincian hak tiap tiket, upah dibayar, sisa, dan riwayat pembayaran.
+Card anggota hanya menampilkan pekerjaan/tiket yang masih memiliki sisa upah pada periode. Rincian anggota memuat pekerjaan yang belum lunas dan pembayaran sisa periode; pekerjaan lunas serta voucher dipindahkan ke halaman **Riwayat Penggajian Karyawan** untuk kasir dan admin/manajer. Riwayat memuat tab Pekerjaan lunas dan Voucher pembayaran dengan pencarian karyawan/nomor dokumen, rentang tanggal, serta akses bukti gaji. Karyawan nonaktif tetap tercantum dalam riwayat. Pembalikan pembayaran mengembalikan pekerjaan yang memiliki sisa ke rincian anggota, dan voucher pembalikan tetap tersimpan.
 
 - Hak berasal dari alokasi anggota pada tiket, bukan dihitung ulang memakai tarif saat penggajian.
 - Kasir/manajer dapat membayar sebagian atau melunaskan periode yang dipilih.
@@ -303,21 +320,21 @@ Biaya operasional dicatat sebagai dibayar saat diposting.
 
 ### 5.11 Data Konsumen/Pelanggan
 
-- CRUD kode, nama, telepon, alamat/kebun, catatan, dan status aktif.
+- CRUD nama, telepon, alamat/kebun, catatan, dan status aktif; seluruh formulir master tidak meminta kode.
 - Detail: riwayat timbang, total hak, pembayaran, dan sisa utang.
-- Nomor telepon boleh sama bila memang dipakai bersama; kode konsumen harus unik.
+- Nomor telepon boleh sama bila memang dipakai bersama. Kode internal unik dibuat otomatis saat penyimpanan dan dipertahankan saat data diedit.
 - Penghapusan permanen hanya untuk data yang belum dipakai; selebihnya nonaktifkan.
 
 ### 5.12 Data Mobil
 
-- CRUD kode mobil, plat nomor unik, jenis, kapasitas kg opsional, supir default, dan status aktif.
+- CRUD plat nomor unik, jenis, kapasitas kg opsional, supir default, dan status aktif. Kode internal mobil dibuat otomatis.
 - Tampilkan trip aktif dan riwayat perjalanan.
 - Pelampauan kapasitas menjadi peringatan pada berat muatan manual yang dicatat.
 - Mengubah supir default tidak mengubah supir pada perjalanan lama.
 
 ### 5.13 Data Pabrik
 
-- CRUD kode, nama, alamat, kontak, dan status aktif.
+- CRUD nama, alamat, kontak, dan status aktif. Kode internal pabrik dibuat otomatis.
 - Riwayat harga TBS pabrik dengan waktu mulai berlaku.
 - Riwayat nota, volume diterima, retur, selisih, dan saldo tagihan.
 - Harga referensi pabrik tidak memperbarui penjualan lama.
@@ -326,26 +343,28 @@ Biaya operasional dicatat sebagai dibayar saat diposting.
 
 | Laporan | Rincian utama |
 |---|---|
-| Timbang konsumen | Tiket, kategori buah, berat, harga snapshot, nilai, mobil/trip |
-| Muatan/perjalanan | Mobil, berat muatan awal manual, sortir pabrik manual, berat bersih diterima manual, selisih, nota, status |
-| Penjualan pabrik | Pabrik, nota, berat diterima, harga, potongan, pendapatan, penerimaan |
-| Penjualan sortir | Asal lot, berat, harga jual, biaya asal, margin, sisa stok |
+| Ringkasan periode | Metrik pembelian/penjualan/upah/biaya, selisih transaksi periode, rincian per hari dan mobil |
+| Timbang konsumen | Tiket, TBS/sortir, berat, harga snapshot, nilai, mobil, anggota dan tarif upah |
+| Penjualan pabrik | Pabrik, nota, berat diterima, harga terkunci, potongan, pendapatan, penerimaan/piutang saat ini |
+| Penjualan sortir | Pembeli, mobil, berat manual, harga jual, potongan, pendapatan, penerimaan/piutang saat ini |
+| Piutang penjualan | Nota pabrik/sortir, nilai, diterima, sisa piutang dan status pembayaran saat ini |
 | Utang konsumen | Hak tiket, dibayar, sisa, umur utang dari tanggal timbang |
 | Upah muat | Hak anggota per tiket, tarif, pembagi, dibayar, sisa |
-| Kas | Saldo awal, masuk, keluar, saldo akhir per akun |
-| Biaya operasional | Kategori, tanggal, trip, nominal, bukti |
-| Laba rugi operasional | Pendapatan, biaya buah yang dilepas, biaya muat yang dilepas, biaya harian, laba |
-| Stok sortir | Sumber, masuk, terjual, penyesuaian, sisa berat dan nilai biaya |
+| Kas & bank | Saldo awal, masuk, keluar, saldo akhir per akun, saldo berjalan dan voucher sumber |
+| Penerimaan penjualan | Voucher, nota pabrik/sortir, tanggal penerimaan, akun, nominal, metode, referensi dan bukti |
+| Biaya operasional | Kategori, tanggal, nominal, akun, metode, referensi, keterangan dan bukti |
 | Audit | Pengguna, aksi, waktu, perubahan, alasan pembatalan/pembalikan |
 
-Filter tanggal dengan makna jelas: tanggal timbang, tanggal penjualan, atau tanggal pembayaran sesuai laporan. Sediakan filter konsumen, mobil/trip, pabrik, anggota, dan status bila relevan. Ekspor CSV dan tampilan cetak/PDF; angka ekspor harus sama dengan layar untuk filter yang sama.
+Filter tanggal dengan makna jelas: tanggal timbang, tanggal penjualan, atau tanggal pembayaran sesuai laporan. Sediakan filter konsumen, mobil, pabrik, anggota, akun, kategori, dan status bila relevan, termasuk referensi nonaktif dengan histori. Ekspor CSV dan tampilan cetak/PDF memuat seluruh hasil filter; totalnya harus sama dengan layar dan dokumen sumber, tanpa dibatasi halaman tabel.
+
+Tabel ini mengikuti workflow sederhana terbaru. Laporan perjalanan, stok/FIFO, dan laba per nota dari rancangan awal menjadi acuan histori. Selisih transaksi periode memakai pendapatan − pembelian − hak upah − pengeluaran, bukan biaya stok dilepas atau saldo kas. Laporan utang/upah/piutang menyaring tanggal sumber hak dan memakai pembayaran sah seluruh tanggal saat ini. Pembalikan mengurangi periode tanggal pembalikan; transaksi asli tetap tercatat pada tanggal asal. Audit hanya untuk manajer dan hanya menampilkan perubahan atribut usaha yang diizinkan, tanpa payload kredensial atau lokasi berkas privat.
 
 ## 6. Aturan bisnis inti
 
 ### 6.1 Harga dan transaksi terkunci
 
 1. Untuk waktu timbang yang dipilih, backend mengambil versi harga terakhir dengan `effective_from <= weighed_at`.
-2. Kebijakan harga harian mengharuskan versi untuk tanggal usaha tersebut; bila belum ada, konfirmasi diblokir sampai manajer memublikasikan harga hari itu.
+2. Kebijakan harga harian mengharuskan versi untuk tanggal usaha tersebut; bila belum ada, konfirmasi diblokir sampai manajer atau kasir memublikasikan harga hari itu.
 3. Draft boleh memperbarui pratinjau. Konfirmasi menyimpan ID versi dan nominal snapshot pada tiket/item.
 4. Harga sumber boleh ditambah versi baru; kolom snapshot transaksi lama tidak berubah.
 5. Input tanggal timbang mundur hanya oleh manajer dengan alasan. Supir memakai waktu usaha saat ini.
@@ -423,7 +442,7 @@ Status transaksi dan status pembayaran dipisahkan:
 4. Tiket dikonfirmasi: hak konsumen dan upah tercatat; sortir awal masuk stok.
 5. Kasir dapat membayar konsumen sebelum atau setelah penjualan sesuai dana tersedia; harga tetap terkunci. Tiket konsumen tidak menjadi prasyarat pengisian berat penjualan.
 6. Trip diberangkatkan; referensi biaya tiket yang sudah terkait dibekukan tanpa mengisi berat muatan dari tiket.
-7. Di pabrik supir menginput manual berat muatan awal, berat sortir sesudah pemilahan, dan berat bersih dari timbang terakhir, kemudian harga aktual dan nota.
+7. Di pabrik supir menginput berat sortir sesudah pemilahan dan berat bersih dari timbang terakhir, kemudian nomor nota. Harga mengikuti riwayat harga pabrik secara otomatis.
 8. Penjualan diposting; pendapatan/tagihan, biaya terkait, dan stok retur terbentuk.
 9. Supir menjual buah sortir dengan input manual berat terjual dan harga jual; kasir/manajer mencatat penerimaan uang penjualan.
 10. Kasir membayar konsumen dan anggota muat dengan alokasi dan bukti.
@@ -449,7 +468,7 @@ flowchart TD
         Confirm[Konfirmasi tiket]
         More{Tambah tiket?}
         Depart[Berangkat tanpa mengambil total berat konsumen]
-        FirstWeigh[Timbang pertama dan input manual berat muatan awal]
+        FirstWeigh[Timbang di pabrik tanpa input berat muatan awal]
         FactorySort[Pekerja pabrik memilah buah lalu supir input berat sortir]
         Mill[Timbang akhir lalu input manual berat bersih diterima dan nota]
         Reject{Ada retur?}
@@ -567,7 +586,6 @@ Gunakan **monolit modular Laravel + React melalui Inertia**, dengan frontend dan
 ```mermaid
 flowchart LR
     Web[Browser komputer atau ponsel] --> App[Server Laravel 13 dan halaman React]
-    Desktop[Tauri 2 desktop] --> App
     App --> Auth[Session Breeze, CSRF, dan policies]
     Auth --> Actions[Actions bisnis dan perhitungan server]
     Actions --> DB[(SQLite di disk lokal server)]
@@ -577,8 +595,7 @@ flowchart LR
 
 - React dirender melalui halaman Inertia; route utama dikelola Laravel.
 - Backend menjadi pemilik aturan harga, pembagian upah, saldo, stok, dan laba.
-- SQLite hanya berada di server, tidak dibuka langsung oleh React atau Tauri.
-- Tauri memuat URL aplikasi server yang dikonfigurasi; satu codebase UI dipakai web dan desktop.
+- SQLite hanya berada di server. Browser komputer dan ponsel mengakses aplikasi pada origin HTTPS yang sama melalui Laravel.
 - Seluruh role membaca data yang sama. Jika server ada di kantor, aplikasi tetap dapat dipakai lewat LAN saat internet luar terputus, selama server dan LAN hidup.
 - Ketika koneksi server terputus, tampilkan status koneksi dan blokir posting. Tidak ada janji transaksi offline tersinkronisasi pada MVP.
 
@@ -601,14 +618,12 @@ Komponen shadcn disimpan sebagai kode sumber proyek pada `resources/js/component
 
 Pilih satu versi mayor Tailwind yang didukung hasil scaffolding dan versi shadcn terpilih. Bila menggunakan Tailwind 4, sesuaikan integrasi CSS/Vite berdasarkan dokumentasi; jangan mencampur panduan Tailwind 3 dan 4. [Panduan instalasi Vite](https://ui.shadcn.com/docs/installation/vite)
 
-### 8.4 Desktop Tauri
+### 8.4 Akses melalui browser
 
-- Target awal Windows; Laravel berjalan di server sehingga paket desktop tidak perlu membawa PHP.
-- Webview memuat aplikasi pada origin Laravel sehingga session dan CSRF memakai alur yang sama dengan browser.
-- URL server diatur saat pemasangan; batasi navigasi ke origin aplikasi dan gunakan HTTPS pada deployment produksi.
-- Konten remote tidak diberi akses native secara luas. Jika cetak atau penyimpanan native diperlukan, capability hanya untuk origin dan perintah yang dibutuhkan. [Tauri Remote API Access](https://v2.tauri.app/security/capabilities/#remote-api-access)
-- Cetak/unduh MVP terlebih dahulu memakai alur web yang diuji di webview Windows; native integration dibuat hanya bila diperlukan.
-- Desktop menggunakan koneksi ke server bersama. Transaksi offline dan bundling PHP/Laravel pada desktop berada di luar lingkup.
+- Komputer dan ponsel membuka domain HTTPS aplikasi melalui browser yang diperbarui.
+- Session, CSRF, dan otorisasi dikelola Laravel pada origin aplikasi yang sama.
+- Cetak/PDF, ekspor CSV, serta unggah/unduh bukti menggunakan fasilitas browser.
+- Seluruh transaksi memerlukan koneksi ke satu server bersama; tidak ada pencatatan offline tersinkronisasi.
 
 ### 8.5 SQLite dan akses bersama
 
@@ -774,18 +789,6 @@ CLBK/
 │       ├── Payments/
 │       ├── Reports/
 │       └── Authorization/
-├── desktop/
-│   ├── README.md
-│   ├── src/
-│   │   └── connection-status.html
-│   └── src-tauri/
-│       ├── Cargo.toml
-│       ├── tauri.conf.json
-│       ├── capabilities/
-│       ├── icons/
-│       └── src/
-│           ├── main.rs
-│           └── lib.rs
 └── docs/
     ├── architecture.md
     ├── business-rules.md
@@ -832,7 +835,7 @@ Aturan folder:
 | `ConfirmationDialog` | Ringkasan penerima/nilai dan aksi konfirmasi | Posting/pembayaran/koreksi |
 | `CustomerPicker` | Pencarian konsumen, ID terpilih, parameter `activeOnly`; pembayaran/laporan tetap memuat konsumen nonaktif dengan histori | Timbang/pembayaran/laporan |
 | `TripPicker` | Mobil, nomor trip, supir, status, berat; filter trip sah | Timbang/penjualan |
-| `FactoryManualWeightForm` | Tiga input kg terpisah: muatan awal, sortir pabrik, dan bersih diterima; tidak mengambil total berat konsumen | Penjualan pabrik |
+| `FactoryManualWeightForm` | Dua input kg: sortir pabrik dan bersih diterima; total internal dihitung sistem, harga mengikuti riwayat pabrik | Penjualan pabrik |
 | `SortManualSaleForm` | Input manual berat sortir terjual dan harga jual; ringkasan nilai dan saldo sumber | Penjualan sortir |
 | `FactoryPicker` | Pabrik aktif dan harga referensi | Jual Sawit |
 | `LoadingCrewPicker` | Pilihan multianggota aktif, tanpa duplikasi | Timbang |
@@ -898,7 +901,7 @@ Harga pada draft dapat nullable sampai tersedia, tetapi seluruh snapshot dan tot
 
 | Tabel | Kolom utama | Aturan |
 |---|---|---|
-| `factory_sales` | `id PK`, `number UQ`, `trip_id FK`, `factory_id FK`, `factory_price_schedule_id FK?`, `invoice_number`, `sold_at`, `business_date`, `initial_load_grams`, `sorted_out_grams`, `accepted_grams`, `weight_difference_grams`, `sell_price_snapshot_idr`, `deduction_idr`, `deduction_reason?`, `revenue_idr`, `purchase_cost_released_idr?`, `loading_cost_released_idr?`, `cost_status`, `status`, `variance_approved_by FK users?`, `variance_reason?`, `posted_at?`, `replaces_factory_sale_id FK?` | initial_load, sorted_out, accepted adalah tiga input manual; accepted sudah bersih setelah sortir; partial UQ(trip_id) untuk status draft/posted dan partial UQ(factory_id, invoice_number) pada nota aktif |
+| `factory_sales` | `id PK`, `number UQ`, `trip_id FK`, `factory_id FK`, `factory_price_schedule_id FK?`, `invoice_number`, `sold_at`, `business_date`, `initial_load_grams`, `sorted_out_grams`, `accepted_grams`, `weight_difference_grams`, `sell_price_snapshot_idr`, `deduction_idr`, `deduction_reason?`, `revenue_idr`, `purchase_cost_released_idr?`, `loading_cost_released_idr?`, `cost_status`, `status`, `variance_approved_by FK users?`, `variance_reason?`, `posted_at?`, `replaces_factory_sale_id FK?` | sorted_out dan accepted adalah input manual; initial_load dihitung dari keduanya pada formulir baru, tetap mempertahankan nilai nota lama; accepted sudah bersih setelah sortir; partial UQ(trip_id) untuk status draft/posted dan partial UQ(factory_id, invoice_number) pada nota aktif |
 | `factory_returns` | `id PK`, `factory_sale_id FK UQ`, `weight_grams`, `purchase_cost_carried_idr?`, `loading_cost_carried_idr?`, `cost_status`, `received_at`, `notes?` | weight_grams berasal dari input manual sorted_out_grams; dibuat bila sortir pabrik > 0; tidak membuat utang konsumen |
 
 MVP memelihara satu nota aktif per trip. Koreksi membalik nota asli, lalu membuat record pengganti dengan nomor internal baru dan `replaces_factory_sale_id`. Nota asli tetap tersimpan; constraint unik hanya untuk status draft/posted sehingga tidak menghalangi pengganti. Trip masuk `correction_pending` selama proses ini sesuai aturan pada bagian 6.4. Nomor nota pabrik yang sama boleh digunakan kembali hanya bila nota lama sudah dibalik.
@@ -996,14 +999,14 @@ ER memperlihatkan relasi bisnis setelah posting. Constraint “tepat satu sumber
 Constraint utama:
 
 - Foreign key dokumen ke master menggunakan `RESTRICT`, bukan cascade yang menghapus histori.
-- Nomor bisnis unik; kode/plat dinormalisasi sebelum diperiksa.
+- Nomor bisnis unik; kode master dibuat otomatis dalam transaksi tulis, melewati kode lama yang sudah terpakai. Plat dinormalisasi sebelum diperiksa.
 - Partial unique index membatasi satu trip aktif per mobil untuk status loading/dispatched.
 - Partial unique index membatasi satu nota pabrik draft/posted per trip; revisi yang sudah reversed tetap tersimpan.
 - Sumber lot unik dan XOR antara item sortir awal dan retur pabrik.
 - Penerimaan XOR antara penjualan pabrik dan sortir.
 - Jurnal mempunyai satu sumber sah atau jenis manual yang diizinkan.
 - Total alokasi voucher, total pembagian upah, batas stok, dan batas saldo memerlukan validasi transaksi lintas baris; `CHECK` per baris saja tidak cukup.
-- Berat muatan awal, sortir pabrik, dan berat diterima adalah input manual yang terpisah dari jumlah berat tiket. Total alokasi item penjualan sortir harus sama dengan berat manual pada header.
+- Berat sortir dan berat diterima adalah input manual yang terpisah dari jumlah berat tiket; total internal dihitung dari keduanya. Total alokasi item penjualan sortir harus sama dengan berat manual pada header.
 - Field payment status disajikan dari query; jika dicache, diperbarui hanya melalui action pembayaran dan diverifikasi berkala.
 
 Indeks baca yang direncanakan:
@@ -1053,15 +1056,15 @@ Berat pada penjualan tetap manual. Biaya asal memakai tiket yang memang terkait 
 ### 12.3 Alokasi biaya TBS yang dikembalikan pabrik
 
 ```text
-biaya_beli_retur = round_half_up(total_biaya_beli_TBS_trip × gram_sortir_manual / gram_muatan_awal_manual)
-biaya_muat_retur = round_half_up(total_biaya_muat_TBS_trip × gram_sortir_manual / gram_muatan_awal_manual)
+biaya_beli_retur = round_half_up(total_biaya_beli_TBS_trip × gram_sortir_manual / gram_total_internal)
+biaya_muat_retur = round_half_up(total_biaya_muat_TBS_trip × gram_sortir_manual / gram_total_internal)
 biaya_beli_dilepas_pabrik = total_biaya_beli_TBS_trip - biaya_beli_retur
 biaya_muat_dilepas_pabrik = total_biaya_muat_TBS_trip - biaya_muat_retur
 ```
 
-Rumus memakai berat muatan awal dan berat sortir yang diinput manual di pabrik. Tiket terkait hanya menjadi sumber nominal biaya; beratnya tidak dipakai sebagai pengganti muatan manual. Selisih/susut pada rekonsiliasi sudah termasuk biaya yang dilepas pabrik; jangan mengurangkan biaya susut yang sama lagi.
+Rumus memakai kolom total berat internal dan berat sortir manual. Untuk nota baru dari formulir, total berat internal adalah berat sortir ditambah berat bersih diterima; nota lama tetap memakai berat awal tersimpan. Tiket terkait hanya menjadi sumber nominal biaya; beratnya tidak dipakai sebagai pengganti berat nota. Selisih/susut pada rekonsiliasi nota lama sudah termasuk biaya yang dilepas pabrik; jangan mengurangkan biaya susut yang sama lagi.
 
-Berat sortir tidak boleh melebihi berat muatan awal manual. Rumus hanya dijalankan bila muatan awal lebih dari nol dan biaya sumber tersedia. Bila biaya sumber unavailable, stok retur tetap memakai berat sortir manual, sedangkan biaya dan laba tetap berstatus belum lengkap. Trip sortir saja menggunakan lot sumbernya tanpa memanggil rumus nota pabrik.
+Berat sortir tidak boleh melebihi total berat internal. Rumus hanya dijalankan bila total berat lebih dari nol dan biaya sumber tersedia. Bila biaya sumber unavailable, stok retur tetap memakai berat sortir manual, sedangkan biaya dan laba tetap berstatus belum lengkap. Trip sortir saja menggunakan lot sumbernya tanpa memanggil rumus nota pabrik.
 
 ### 12.4 Alokasi biaya penjualan sortir bertahap
 
@@ -1104,7 +1107,9 @@ Trip dengan stok sortir yang belum dijual diberi label **Hasil trip belum final*
 
 Biaya operasional bertaut trip dapat dihitung pada laporan keseluruhan trip. Pada laporan tanggal, biaya mengikuti tanggal kejadian. Jangan mengalokasikan biaya harian ke trip lalu mengurangkan biaya yang sama sekali lagi dari total periode.
 
-### 12.6 Contoh rekonsiliasi lengkap
+### 12.6 Contoh rekonsiliasi nota lama
+
+Contoh berikut mendokumentasikan perhitungan nota lama dengan tiga berat tersimpan. Formulir baru hanya meminta sortir dan bersih diterima sesuai revisi 5.4; total internalnya dihitung dari kedua berat tersebut.
 
 Supir memasukkan hasil timbang pertama di pabrik sebagai muatan awal **1.000 kg**. Pekerja pabrik memisahkan sortir **80 kg**, lalu timbang terakhir menghasilkan sawit diterima **900 kg**. Ketiga angka diinput manual oleh supir. Harga jual Rp3.500/kg tanpa potongan. Biaya beli dari tiket terkait Rp3.000.000 dan biaya muat Rp100.000; nominal biaya ini tidak menentukan input berat muatan.
 
@@ -1148,7 +1153,7 @@ Arsitektur Inertia memakai route web dengan session dan proteksi request. Tabel 
 | Penjualan pabrik | `GET /factory-sales`, `POST /factory-sales`, `POST /factory-sales/{id}/post` | Trip, tiga berat manual, nota, rekonsiliasi, snapshot; tidak mengambil total berat konsumen |
 | Koreksi nota pabrik | `POST /factory-sales/{id}/replace` | Manajer, nota lama reversed, trip correction_pending, snapshot biaya TBS, revisi input berat manual dengan audit |
 | Penjualan sortir | `GET /sort-sales`, `POST /sort-sales`, `POST /sort-sales/{id}/post` | Berat terjual manual, harga jual manual, sisa stok, alokasi lot |
-| Harga | `GET /prices`, `POST /prices/publish` | Manajer, waktu berlaku, versi |
+| Harga | `GET /prices`, `POST /prices`, `POST /prices/factory` | Manajer/kasir untuk harga beli, upah muat, dan referensi pabrik; waktu berlaku dan versi |
 | Konsumen | `GET /customer-payments`, `POST /customer-payments` | Penerima, saldo tiket, akun kas |
 | Gaji | `GET /payroll`, `POST /payroll-payments` | Hak anggota dan periode |
 | Penerimaan | `POST /sale-receipts` | Kasir/manajer, saldo tagihan |
@@ -1187,7 +1192,7 @@ Laporan
 Pengaturan Pengguna dan Usaha
 ```
 
-Menu menyesuaikan role. Supir mendapat akses cepat **Timbang**, **Muatan Saya**, **Jual Sawit**, dan **Jual Sortir**. Kasir mendapat akses cepat **Bayar Konsumen**, **Bayar Gaji**, dan **Catat Penerimaan**.
+Navigasi terbaru mengikuti workflow sederhana. Pada ponsel/tablet, supir memakai navigasi bawah **Dashboard**, **Timbang**, **Menu**, **Pabrik**, dan **Sortir**. Panel **Menu supir** menyediakan seluruh enam tautan, termasuk Tambah Konsumen dan Profil Saya; tombol Menu menjadi aktif pada kedua halaman tersebut. Admin/manajer serta kasir memakai navigasi bawah **Dashboard**, **Penimbang**, **Menu**, **Gaji Muat**, dan **Kas Usaha**. Tombol Menu di tengah membuka modal beranimasi: sepuluh tautan untuk kasir, dan seluruh 20 tautan admin dalam kelompok Ringkasan usaha, Operasional, Keuangan, Data master, Administrasi, serta Akun. Penerimaan Penjualan tersedia pada sidebar desktop dan modal Menu untuk penjualan pabrik maupun sortir. Seluruh role memakai sidebar sesuai hak akses mulai lebar 1.024 px; navigasi bawah disembunyikan dan modal Menu ditutup saat beralih ke desktop. Header menampilkan usaha/halaman aktif, label role, dan tombol keluar tanpa tombol profil; Profil Saya tersedia melalui navigasi. Menu Timbang, Penjualan Pabrik, serta Penjualan Sortir tidak tampil pada navigasi utama kasir; rincian dokumen sumber tetap dapat dibuka dari laporan dan transaksi keuangan sesuai izin yang ada. Kelima halaman data master admin memiliki tautan dan indikator halaman aktif masing-masing.
 
 ### 14.2 Prinsip tampilan
 
@@ -1195,10 +1200,10 @@ Menu menyesuaikan role. Supir mendapat akses cepat **Timbang**, **Muatan Saya**,
 - Form timbang satu alur: konsumen → muatan → berat → anggota → ringkasan → konfirmasi.
 - Harga snapshot selalu terlihat dengan tanggal; contoh “Harga tiket Rp3.000/kg · berlaku saat timbang”.
 - Tombol pembayaran menampilkan jumlah, misalnya **Lunaskan Rp3.200.000**.
-- Card belum lunas/lunas mempunyai teks status, nilai dibayar, sisa, dan detail tiket.
+- Card Uang Penimbang hanya memuat tiket belum lunas, dengan teks status, nilai dibayar, sisa, dan detail tiket. Riwayat yang lunas tersedia melalui voucher; status Belum Lunas/Lunas pada Gaji Karyawan Muat tetap tersedia.
 - Gunakan warna status sebagai bantuan; jangan mengandalkan warna saja.
 - Rupiah ditampilkan `Rp3.000.000`; kilogram mengikuti format Indonesia dan satuan eksplisit.
-- Form penjualan pabrik menampilkan tiga input manual berurutan: **Muatan Awal → Sortir Pabrik → Bersih Diterima**, dilanjutkan harga dan nilai nota. Berat konsumen tidak mengisi ketiga field ini.
+- Form penjualan pabrik menampilkan dua input manual: **Sortir Pabrik → Bersih Diterima**, harga otomatis yang tidak dapat diedit, potongan tanpa alasan, dan nilai nota. Detail nota tidak menyediakan input alasan persetujuan selisih atau unggah bukti.
 - Form penjualan sortir menampilkan input manual **Berat Terjual** dan **Harga Jual per Kg**, beserta nilai penjualan dan sisa stok.
 - Pesan kegagalan menyebut data yang perlu diperbaiki, bukan hanya “Error”.
 - Saat submit, tombol dinonaktifkan sampai hasil diketahui; retry tetap memakai key yang sama.
@@ -1212,7 +1217,7 @@ Menu menyesuaikan role. Supir mendapat akses cepat **Timbang**, **Muatan Saya**,
 - Login hanya untuk akun aktif; registrasi publik dinonaktifkan.
 - Manajer membuat akun dan role; role tidak dapat diubah dari profil sendiri.
 - Password memakai mekanisme hash Laravel; login diberi pembatasan percobaan.
-- Session, logout, CSRF, cookie, dan izin diuji di browser maupun webview Tauri.
+- Session, logout, CSRF, cookie, dan izin diuji melalui browser komputer maupun ponsel.
 - Bukti transaksi disimpan privat; unduh membutuhkan otorisasi dokumen.
 - Rahasia konfigurasi tidak masuk Git dan tidak dikirim ke frontend.
 - Upload dibatasi tipe/ukuran dan nama file dinormalisasi; jangan menjalankan isi upload.
@@ -1234,14 +1239,14 @@ Menu menyesuaikan role. Supir mendapat akses cepat **Timbang**, **Muatan Saya**,
 - Simpan backup di lokasi berbeda dari disk data utama; retention awal 7 harian dan 4 mingguan, dapat diatur manajer.
 - Target awal: kehilangan data maksimal 24 jam dengan backup harian; pemulihan ≤ 2 jam setelah mesin pengganti tersedia, harus dibuktikan dengan simulasi restore.
 - Restore dilakukan dalam maintenance mode setelah backup kondisi sekarang, dengan pemeriksaan jumlah dokumen, saldo kas, utang, stok, dan akses bukti.
-- Deployment memakai web server produksi yang mendukung PHP 8.3+; development server bukan rancangan server produksi.
+- Deployment memakai web server produksi yang mendukung PHP 8.4+ sesuai runtime fondasi; development server bukan rancangan server produksi.
 - Dokumentasikan lokasi DB/storage, pemilik proses, izin file, URL, HTTPS, jadwal backup, dan prosedur upgrade.
-- Migrasi dijalankan sekali pada server; desktop hanya menerima versi aplikasi yang kompatibel, tidak menjalankan migrasi database sendiri.
+- Migrasi dijalankan sekali pada server; browser memuat aset dari rilis aplikasi yang sama dan tidak membuka database secara langsung.
 - Pantau kegagalan posting, konflik SQLite, backup gagal, dan ruang disk.
 
 ## 16. Acceptance criteria dan rencana pengujian
 
-Dokumen ini belum menjalankan pengujian aplikasi karena kode belum dibuat. Skenario di bawah menjadi syarat penerimaan implementasi.
+Fondasi web dan tahap 1 memiliki pengujian otomatis serta pemeriksaan browser, dicatat pada bagian 17. Skenario transaksi sawit, pembayaran, dan laporan di bawah tetap menjadi syarat penerimaan tahap terkait.
 
 | ID | Skenario | Hasil yang harus terbukti |
 |---|---|---|
@@ -1255,7 +1260,7 @@ Dokumen ini belum menjalankan pengujian aplikasi karena kode belum dibuat. Skena
 | AC-08 | Tiket TBS 1.000 kg dan sortir awal 100 kg | Hak memakai dua harga; upah tidak dipotong dari konsumen |
 | AC-09 | Satu mobil melakukan dua trip hari yang sama | Setiap penjualan memakai input berat manual trip masing-masing, tanpa menjumlahkan semua konsumen hari itu |
 | AC-10 | Trip berangkat sebelum hasil timbang pabrik tersedia | Dapat berangkat tanpa berat pabrik; supir menginputnya setelah timbang dan nilainya terkunci ketika nota diposting |
-| AC-11 | Input manual muatan awal 1.000 kg, sortir 80 kg, bersih akhir 900 kg | Nota memakai 900 kg langsung; selisih 20 kg; stok sortir pabrik 80 kg |
+| AC-11 | Input sortir 80 kg dan bersih akhir 900 kg tanpa muatan awal, harga manual, atau alasan potongan | Total internal 980 kg; nota memakai 900 kg langsung dengan harga pabrik otomatis; stok sortir pabrik 80 kg; potongan dapat disimpan tanpa input alasan |
 | AC-12 | Retur pabrik diposting | Tidak membuat tiket konsumen atau utang baru |
 | AC-13 | Supir input manual penjualan sortir 30 kg dari stok 80 kg dan harga Rp2.000/kg | Pendapatan Rp60.000; stok sisa 50 kg; biaya yang tersedia dilepas proporsional |
 | AC-14 | Jual semua sisa lot | Berat dan sisa biaya tepat nol |
@@ -1278,8 +1283,8 @@ Dokumen ini belum menjalankan pengujian aplikasi karena kode belum dibuat. Skena
 | AC-31 | Contoh laba pada bagian 12.6 | Hasil trip Rp210.000 sebelum biaya lain |
 | AC-32 | Posting gagal di tengah proses | Seluruh perubahan rollback; tidak ada dokumen separuh jadi |
 | AC-33 | Ekspor laporan dengan filter yang sama | Total sama dengan layar dan transaksi sumber |
-| AC-34 | Server terputus di browser/Tauri | Status koneksi jelas; tidak melakukan posting lokal tersembunyi |
-| AC-35 | Login/logout/cetak pada webview Windows | Session, proteksi request, bukti, dan logout berfungsi |
+| AC-34 | Server terputus saat dipakai melalui browser | Status koneksi jelas; tidak melakukan posting lokal tersembunyi |
+| AC-35 | Login/logout/cetak pada browser komputer dan ponsel | Session, proteksi request, bukti, dan logout berfungsi |
 | AC-36 | Backup dipulihkan ke server uji | Dokumen, saldo, stok, harga snapshot, dan bukti cocok |
 | AC-37 | Dasar upah TBS 5 gram + sortir 5 gram pada Rp100/kg | Total Rp1; alokasi kategori dan anggota masing-masing berjumlah Rp1 |
 | AC-38 | Nota kemarin dibalik hari ini | Laporan kemarin tetap memuat posting asli; hari ini memuat pembalikan lawan tanda |
@@ -1293,19 +1298,19 @@ Jenis pengujian:
 - Unit: resolusi harga, pembulatan berat/harga, pembagian upah, alokasi biaya stok, rumus laba.
 - Feature: posting, pembayaran, pembalikan, policy role, transaksi rollback, idempotensi.
 - Integrasi SQLite nyata: write contention, saldo/stok bersamaan, FK, partial unique index, backup/restore.
-- Uji alur pengguna: satu hari kerja lengkap dan pembayaran hari berikutnya di browser dan desktop.
+- Uji alur pengguna: satu hari kerja lengkap dan pembayaran hari berikutnya di browser komputer dan ponsel.
 
 ## 17. Tahapan implementasi
 
 | Tahap | Hasil konkret | Syarat selesai |
 |---|---|---|
-| 0. Validasi fondasi | Laravel 13 + Breeze React/Inertia, Tailwind/shadcn, SQLite, proof of connection Tauri | Login, build, session desktop, strategi write lock dan kompatibilitas terbukti |
+| 0. Validasi fondasi | Laravel 13 + Breeze React/Inertia, Tailwind/shadcn, SQLite, status koneksi browser | Login, build, session browser, strategi write lock dan kompatibilitas terbukti |
 | 1. Identitas dan master | Akun/role, konsumen, anggota, mobil, pabrik, akun kas, pengaturan usaha | Policy dan CRUD/nonaktif berjalan; seed awal siap |
 | 2. Harga dan timbang | Versi harga, trip loading, tiket, snapshot, hak anggota, stok sortir awal | AC harga dan pembagian upah lulus |
-| 3. Penjualan dan stok | Keberangkatan, tiga input berat pabrik manual, input penjualan sortir manual, rekonsiliasi dan stok | Berat tidak mengambil total konsumen; nota memakai bersih akhir langsung; biaya dan hasil dapat ditelusuri |
+| 3. Penjualan dan stok | Keberangkatan, input sortir dan bersih pabrik manual, harga pabrik otomatis, input penjualan sortir manual, rekonsiliasi dan stok | Berat tidak mengambil total konsumen; nota memakai bersih akhir langsung; biaya dan hasil dapat ditelusuri |
 | 4. Keuangan | Pembayaran konsumen, gaji, penerimaan penjualan, biaya, ledger kas, pembalikan | Konflik, idempotensi, saldo, dan audit lulus |
-| 5. Dashboard dan laporan | Metrik, drill-down, filter, ekspor, bukti | Rumus laba/utang/kas sama dengan dokumen sumber |
-| 6. Desktop dan operasional | Installer Windows, konfigurasi server, cetak/unduh, backup/restore, deployment | Hari kerja lengkap dan pemulihan data terbukti |
+| 5. Dashboard dan laporan | Metrik, drill-down, filter, CSV, cetak, bukti, audit | Rumus selisih periode/utang/piutang/kas sama dengan dokumen sumber dan seluruh hasil ekspor |
+| 6. Deployment dan operasional | Coolify, HTTPS, cetak/unduh web, backup/restore, monitoring | Hari kerja lengkap dan pemulihan data terbukti |
 
 Tahap 2 dan 3 mendahului laporan laba agar laporan mempunyai transaksi dan biaya asal yang benar. UI pembayaran dapat dipersiapkan lebih awal, tetapi posting keuangan tidak dirilis sebelum integritas dan kontrol konflik siap.
 
@@ -1313,7 +1318,65 @@ Pengembangan mengikuti urutan tahap di atas. Setiap tahap menghasilkan modul yan
 
 ### 17.1 Status implementasi fondasi — 9 Oktober 2026
 
-Fondasi web sudah diimplementasikan dan lolos 40 pengujian otomatis, build frontend, serta pemeriksaan login/logout di browser. Fondasi Tauri berhasil menghasilkan executable debug Windows dan lolos 3 pengujian Rust. Pemeriksaan interaksi, koneksi, dan sesi langsung di WebView masih menunggu uji manual karena kontrol aplikasi Windows tidak tersedia dalam sesi otomasi. Tahap 0 belum ditutup sepenuhnya dan tahap 1 belum dimulai. Rincian hasil dan langkah menjalankan terdapat di `README.md`, `desktop/README.md`, dan `docs/tahap-0.md`.
+Fondasi web telah diimplementasikan dan lolos 40 pengujian otomatis, build frontend, serta pemeriksaan login/logout di browser pada saat tahap 0. Tahap 1 dilanjutkan sesuai instruksi pengguna dan statusnya dicatat di bagian 17.2. Rincian fondasi terdapat di README.md dan docs/tahap-0.md.
+
+### 17.2 Status tahap 1 — 9 Oktober 2026
+
+Akun/role, CRUD/nonaktif konsumen, anggota muat, mobil, pabrik, akun kas/bank, kategori biaya awal, serta pengaturan usaha sudah diimplementasikan. Akses pengelolaan dibatasi untuk manajer melalui policy di server. Supir/kasir memperoleh referensi aktif yang dibutuhkan melalui endpoint pemilih; data kontak/catatan privat tidak ikut dikirim. Akun nonaktif ditolak saat login dan sesi lama mengikuti perubahan status/role. Minimal satu manajer aktif dipertahankan.
+
+Semua perubahan master, akun melalui menu administrasi/bootstrap, dan pengaturan diaudit secara append-only bersama transaksi tulis SQLite. Seed awal dapat diulang tanpa menimpa perubahan dan tidak membuat kredensial atau konsumen contoh. Zona waktu WIB dan toleransi berat 2% tetap mengikuti bagian 18. Kapasitas mobil dikonversi dari input kg menjadi integer gram dengan maksimal tiga desimal.
+
+Pengujian otomatis, build frontend, pemeriksaan format, dan alur browser dicatat di `docs/tahap-1.md`. Riwayat transaksi pada detail master, saldo kas, dan bukti transaksi mengikuti tahap modul sumbernya. Harga referensi pabrik sudah tersedia pada tahap 2; alur penjualan manual pada bagian 5.3 tetap menjadi acuan tahap 3.
+
+### 17.3 Status tahap 2 — 9 Oktober 2026
+
+Versi harga beli TBS/sortir dan upah muat, riwayat harga pabrik, pembukaan perjalanan loading, draft/edit/hapus tiket, pratinjau, pengesahan dengan snapshot, hak konsumen dan anggota, alokasi biaya muat kategori, serta lot dan ledger stok sortir awal sudah diimplementasikan. Publikasi harga lama tidak ditimpa; harga wajib tersedia pada tanggal usaha tiket. Harga pratinjau yang berubah memerlukan persetujuan ulang. Supir memakai waktu server dan hanya mengakses perjalanan yang ditugaskan kepadanya.
+
+Upah ditanggung toke, dasar upah memakai TBS + sortir awal, dan pembagian anggota serta kategori memakai aritmetika integer yang dapat direkonsiliasi. Tiket sah tidak dapat diubah nominalnya atau dihapus. Pembatalan oleh manajer memerlukan alasan, trip masih loading, dan stok belum bergerak; reversal stok serta relasi tiket pengganti menjaga histori. Pengesahan/pembatalan memakai idempotensi, audit, pemeriksaan versi, dan transaksi SQLite yang sama.
+
+Seluruh 102 pengujian otomatis (910 assertions), build frontend, dan pemeriksaan browser tahap 2 tercatat di `docs/tahap-2.md`. Pengujian bersamaan memakai dua proses terpisah pada database WAL. Berat muatan pabrik tidak pernah diisi dari total tiket. Keberangkatan, penjualan pabrik dengan tiga berat manual, retur pabrik, dan penjualan sortir manual tetap menjadi tahap 3; pembayaran dan gaji menjadi tahap 4.
+
+### 17.4 Status tahap 3 — 9 Oktober 2026
+
+Keberangkatan dan pembekuan biaya TBS, draft/edit/hapus nota pabrik/sortir, pengesahan, tiga berat pabrik manual, harga aktual/potongan, persetujuan selisih versi terbaru, stok retur, FIFO penjualan sortir manual, sisa berat/biaya, kehilangan stok dan pembalikannya, bukti privat, serta penutupan perjalanan sudah diimplementasikan. Input berat tidak mengambil total konsumen atau seluruh stok. Berat bersih pabrik digunakan langsung.
+
+Retur membawa biaya TBS dari snapshot keberangkatan dan tidak menambah hak konsumen. Biaya unavailable tetap null dan margin ditampilkan **Belum lengkap**. Penjualan membentuk piutang dan ledger pendapatan/biaya; belum mencatat kas. Pembalikan nota mempertahankan histori, memakai tanggal pembalikan untuk ledger laba, dan mensyaratkan stok retur kembali tepat ke berat/biaya asal. Nota pengganti memakai nomor baru, tautan `replaces_sale_id` pada masing-masing tabel penjualan, alasan koreksi, serta snapshot biaya asal yang tetap terkunci. Trip koreksi tidak memesan ulang mobil aktif.
+
+Seluruh 134 pengujian PHP (1.489 assertions), build frontend/TypeScript, pemeriksaan format, dan alur browser manajer/supir/kasir serta layar 390 × 844 lulus. Contoh bagian 12.6 menghasilkan Rp210.000 setelah muat dan sebelum biaya lain; dua proses SQLite yang berebut stok hanya mengesahkan satu penjualan bila stok tidak cukup. Migrasi mempertahankan seluruh baris pada 19 tabel lama dibanding backup konsisten, dengan integrity/FK check lulus. Rincian tercatat di `docs/tahap-3.md`.
+
+Cakupan pembayaran dan kas telah diselesaikan pada tahap 4 sebagaimana bagian 17.5. Pembalikan nota/tiket kini menahan alokasi uang yang masih sah. Dashboard/laporan lengkap tetap mengikuti tahap 5.
+
+### 17.5 Status tahap 4 — 9 Oktober 2026
+
+Pembayaran konsumen dan gaji sebagian/lunas, card Belum Lunas/Lunas dengan snapshot tiket, pilihan hak dan alokasi pekerjaan tertua, periode gaji, penerimaan penjualan pabrik/sortir, pengeluaran harian, ledger kas/bank, saldo awal/modal/penarikan, bukti privat, serta voucher dengan format cetak A4 sudah diimplementasikan. Hak konsumen tidak dipotong upah; harga dan hak anggota tetap menggunakan snapshot. Penerima nonaktif yang masih mempunyai hak tetap dapat dibayar.
+
+Penerimaan piutang tidak menambah pendapatan kedua kali. Pembayaran konsumen/gaji tidak membebankan biaya ulang. Pengeluaran mencatat biaya dan kas tepat satu kali. Kas tidak boleh negatif; pemeriksaan saldo, versi/sisa hak, sumber, idempotensi, dan audit dilakukan di bawah write lock SQLite. Kasir/manajer mencatat transaksi keuangan, sedangkan pembalikan dan modal dibatasi ke manajer. Pembalikan memerlukan alasan serta kejadian/referensi pengembalian uang dan membentuk jurnal lawan arah hari ini, tanpa menghapus voucher, alokasi, atau laba hari lama.
+
+Pembatalan tiket menahan pembayaran konsumen dan gaji aktif; pembalikan nota menahan penerimaan penjualan aktif. Proteksi sumber, rekonsiliasi nominal, ledger append-only, serta larangan perubahan/penghapusan voucher tersedia pada aplikasi dan database. Seluruh 161 pengujian PHP (1.934 assertions), build/TypeScript, dan pemeriksaan format lulus. Migrasi mempertahankan data pada 26 tabel lama dibanding backup dan pemeriksaan integrity/FK lulus. Rincian konkurensi dua kasir, pemeriksaan browser manajer/kasir/supir dan layar ponsel, serta backup dicatat di `docs/tahap-4.md`. Dashboard/laporan dan pemulihan operasional tetap mengikuti tahap 5–6.
+
+### 17.6 Revisi formulir penjualan pabrik — 9 Oktober 2026
+
+Form tambah/edit nota pabrik tidak lagi meminta berat muatan awal atau alasan potongan. Harga jual otomatis memakai versi harga pabrik pada waktu penjualan dan disimpan sebagai snapshot; nilai dari browser tidak digunakan. Total internal dihitung dari sortir dan bersih diterima bila berat awal tidak dikirim. Data lama tetap terbaca. Persetujuan selisih pada detail nota memakai tombol tanpa input alasan, dengan catatan standar pada audit. Form unggah bukti pabrik dihilangkan; berkas yang sudah tersimpan tetap dapat dilihat. Form penjualan sortir tetap memakai harga manual, alasan potongan, dan unggah bukti.
+
+Verifikasi: 58 pengujian penjualan/keuangan berhasil (992 assertions), TypeScript dan build frontend berhasil, serta pengecekan browser pada formulir dan detail nota nomor 2 menunjukkan kolom yang diminta sudah dihilangkan dan harga otomatis Rp3.100/kg tidak dapat diedit.
+
+### 17.7 Status tahap 5 PRD — 10 Oktober 2026
+
+Dashboard dan laporan telah diimplementasikan: tautan metrik ke rincian sumber, filter sesuai jenis laporan, utang konsumen/upah dan piutang saat ini, arus kas per akun, ringkasan harian/per mobil, rincian timbang/penjualan/penerimaan/pengeluaran, serta audit khusus manajer. Penjualan pabrik dan sortir sama-sama memakai penerimaan terpisah. CSV dan cetak memakai query serta filter yang sama dengan layar, memuat seluruh halaman dan total yang sama, termasuk kilogram tiga desimal dan pembalikan lintas tanggal WIB. Bukti tetap mengikuti otorisasi dokumen sumber.
+
+Seluruh **227 pengujian PHP (4.849 assertions)**, build frontend/TypeScript, Pint, dan Prettier lulus. Pengujian mencakup rekonsiliasi sumber, 55 baris lintas halaman, status sebagian/lunas, histori master nonaktif, hak akses seluruh endpoint, formula CSV/escaping cetak, pembalikan lewat tengah malam WIB, saldo berjalan dari histori sebelum periode, bukti privat, perubahan audit tanpa atribut sensitif, dan snapshot pembacaan SQLite ketika koneksi lain menulis. Pembacaan database lokal memakai mode read-only; semua laporan cocok dengan ringkasan sumber, integrity check `ok`, dan tidak ada pelanggaran foreign key. Tahap ini tidak memerlukan migrasi baru atau perubahan transaksi lokal.
+
+Status verifikasi: implementasi dan pemeriksaan otomatis selesai; pemeriksaan visual browser, layar ponsel, serta tata letak hasil cetak manual belum dilakukan karena koneksi browser/komputer tidak tersedia pada sesi ini. Rincian penggunaan, hasil, dan batas cakupan tersedia pada [hasil tahap 5](docs/tahap-5.md). Tahap 5 pemeriksaan akhir dalam rencana workflow sederhana merupakan acuan terpisah; deployment/backup-restore tetap tahap 6 PRD.
+
+### 17.8 Status tahap 6 PRD — 16 Oktober 2026
+
+Deployment memakai Coolify dengan Nginx + PHP-FPM 8.4 pada satu VPS. Browser komputer dan ponsel mengakses origin HTTPS yang sama. Source, secret runtime, storage data persisten, dan disk backup terpisah dijelaskan di DEPLOY.md.
+
+Backup menggabungkan snapshot SQLite konsisten yang menangani WAL dan bukti privat, manifest HMAC/SHA256, retensi default tujuh harian/empat mingguan yang dapat diubah manajer, jadwal harian, serta penolakan lokasi publik/volume produksi yang sama dengan database. Restore memerlukan maintenance, backup kondisi sekarang, kode migrasi yang cocok, dan rekonsiliasi seluruh tabel usaha, kas/utang/piutang/stok/harga snapshot/bukti. Sesi/reset token/remember token/cache dicabut dan audit restore ditambahkan. Mesin pengganti memakai opsi khusus yang menolak database nonkosong. Pemeriksaan clbk:doctor memantau integritas, kapasitas data, backup dan scheduler.
+
+Simulasi terisolasi sebelumnya memulihkan 33 tabel usaha dan bukti dengan checksum cocok dalam 0,066 detik pada dataset sintetis kecil. Tes tambahan mempertahankan piutang belum diterima dan histori stok bersaldo. Alur satu hari kerja sampai pelunasan hari berikutnya lulus melalui controller HTTP, dengan kas akhir Rp4.990.000 dan keuntungan periode −Rp10.000 tanpa biaya ganda.
+
+Verifikasi server produksi belum ditutup: Docker build/run di Coolify, DNS/HTTPS, SMTP, permission/storage, scheduler, backup/offsite, alarm, restore dan p95 10.000 tiket perlu dibuktikan pada mesin target. AC-34/35 diperiksa melalui browser komputer dan ponsel; AC-36 memerlukan latihan pemulihan pada data representatif. Rincian pengujian terbaru dicatat pada [hasil tahap 6](docs/tahap-6.md), [panduan Coolify](DEPLOY.md), dan [backup/restore](docs/backup-restore.md).
 
 ## 18. Ketetapan implementasi
 
@@ -1322,22 +1385,22 @@ Ketentuan berikut ditetapkan untuk implementasi dan tidak memerlukan masukan tam
 | Ketentuan | Nilai/aturan tetap | Modul |
 |---|---|---|
 | Zona waktu usaha | Asia/Jakarta | Fondasi dan dashboard harian |
-| Berat muatan ke pabrik | Input manual supir dari timbang pertama di pabrik, bukan total konsumen hari itu | Muatan dan penjualan pabrik |
+| Berat muatan ke pabrik | Total internal dihitung dari sortir dan bersih diterima, bukan total konsumen hari itu; tidak ada input berat awal | Muatan dan penjualan pabrik |
 | Sortir pabrik | Input manual hasil pemilahan pekerja pabrik | Penjualan pabrik dan stok sortir |
 | Berat diterima pabrik | Input manual timbang bersih sesudah sortir; dipakai langsung untuk penjualan | Penjualan pabrik |
 | Penjualan sortir | Input manual berat terjual dan harga jual per kg | Penjualan Buah Sortir |
 | Dasar upah | TBS + sortir awal pada tiket; ditanggung toke dan dibagi rata antaranggota tiket | Timbang dan payroll |
 | Ketelitian timbangan | Maksimal 3 desimal kg / 1 gram | Input timbang dan nota |
-| Toleransi selisih berat | 2% dari muatan awal sebagai ambang persetujuan manajer; tidak mengubah input berat | Posting pabrik |
+| Toleransi selisih berat | 2% sebagai ambang persetujuan manajer pada nota lama; persetujuan melalui tombol tanpa input alasan | Posting pabrik |
 | Saldo kas boleh negatif | Tidak; setor modal/saldo awal sah sebelum pembayaran | Pembayaran |
 | Periode bayar gaji | Berdasarkan rentang pekerjaan yang dipilih pada pembayaran | Payroll |
-| Penggunaan aplikasi | Satu server bersama yang diakses melalui jaringan kantor atau internet | Web dan desktop |
-| Format bukti | A4 | Pembayaran dan desktop |
+| Penggunaan aplikasi | Satu server bersama yang diakses melalui jaringan kantor atau internet | Browser komputer dan ponsel |
+| Format bukti | A4 | Pembayaran dan laporan web |
 | Harga nol | Diblokir untuk pembelian/penjualan sah | Harga dan posting |
 
 ## 19. Referensi dokumentasi
 
-Dokumentasi Laravel, Tauri, dan shadcn diperiksa melalui Context7 dengan library ID `/laravel/docs/__branch__13.x`, `/tauri-apps/tauri-docs`, dan `/shadcn-ui/ui`. Pemeriksaan tambahan menggunakan sumber resmi untuk deklarasi Breeze dan karakteristik SQLite.
+Dokumentasi Laravel dan shadcn diperiksa melalui Context7 dengan library ID `/laravel/docs/__branch__13.x` dan `/shadcn-ui/ui`. Pemeriksaan tambahan menggunakan sumber resmi untuk deklarasi Breeze dan karakteristik SQLite.
 
 - [Laravel 13 Release Notes](https://laravel.com/framework/docs/13.x/releases)
 - [Laravel 13 Starter Kits](https://laravel.com/framework/docs/13.x/starter-kits)
@@ -1347,8 +1410,6 @@ Dokumentasi Laravel, Tauri, dan shadcn diperiksa melalui Context7 dengan library
 - [shadcn/ui documentation](https://ui.shadcn.com/docs)
 - [shadcn components.json](https://ui.shadcn.com/docs/components-json)
 - [shadcn Vite installation](https://ui.shadcn.com/docs/installation/vite)
-- [Tauri capabilities and remote access](https://v2.tauri.app/security/capabilities/#remote-api-access)
-- [Tauri external sidecars](https://v2.tauri.app/develop/sidecar/)
 - [SQLite appropriate uses](https://www.sqlite.org/whentouse.html)
 - [SQLite transaction semantics](https://www.sqlite.org/lang_transaction.html)
 - [SQLite numeric precision](https://www.sqlite.org/floatingpoint.html)

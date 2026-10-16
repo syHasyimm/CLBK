@@ -26,6 +26,5 @@ Thumbs.db
 /.bootstrap
 /.tools
 /database/*.sqlite*
-/desktop/node_modules
-/desktop/src-tauri/target
-/desktop/src-tauri/gen/schemas
+/artifacts
+/backups

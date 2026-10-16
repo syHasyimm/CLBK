@@ -17,15 +17,18 @@ export default function UpdateProfileInformation({
 }) {
     const user = usePage().props.auth.user;
 
-    const { data, setData, patch, errors, processing, recentlySuccessful } = useForm({
+    const { data, setData, patch, reset, errors, processing, recentlySuccessful } = useForm({
         name: user.name,
         email: user.email,
+        current_password: '',
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        patch(route('profile.update'));
+        patch(route('profile.update'), {
+            onFinish: () => reset('current_password'),
+        });
     };
 
     return (
@@ -71,6 +74,30 @@ export default function UpdateProfileInformation({
                     <InputError className="mt-2" message={errors.email} />
                 </div>
 
+                {data.email !== user.email && (
+                    <div>
+                        <InputLabel
+                            htmlFor="profile_current_password"
+                            value="Kata sandi saat ini"
+                        />
+
+                        <TextInput
+                            id="profile_current_password"
+                            type="password"
+                            className="mt-1 block w-full"
+                            value={data.current_password}
+                            onChange={(e) => setData('current_password', e.target.value)}
+                            autoComplete="current-password"
+                            required
+                        />
+
+                        <p className="mt-1 text-sm text-gray-600">
+                            Konfirmasi kata sandi untuk mengganti alamat email pemulihan akun.
+                        </p>
+                        <InputError className="mt-2" message={errors.current_password} />
+                    </div>
+                )}
+
                 {mustVerifyEmail && user.email_verified_at === null && (
                     <div>
                         <p className="mt-2 text-sm text-gray-800">
@@ -93,7 +120,7 @@ export default function UpdateProfileInformation({
                     </div>
                 )}
 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     <PrimaryButton disabled={processing}>Simpan profil</PrimaryButton>
 
                     <Transition

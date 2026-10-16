@@ -1,65 +1,7 @@
 @import 'tailwindcss';
-
-@source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php";
-@source "../views/**/*.blade.php";
-@source "../js/**/*.{ts,tsx}";
-
-@theme inline {
-    --font-sans: 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
-    --color-background: var(--background);
-    --color-foreground: var(--foreground);
-    --color-card: var(--card);
-    --color-card-foreground: var(--card-foreground);
-    --color-primary: var(--primary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-secondary: var(--secondary);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-muted: var(--muted);
-    --color-muted-foreground: var(--muted-foreground);
-    --color-accent: var(--accent);
-    --color-accent-foreground: var(--accent-foreground);
-    --color-destructive: var(--destructive);
-    --color-border: var(--border);
-    --color-input: var(--input);
-    --color-ring: var(--ring);
-    --radius-sm: calc(var(--radius) - 4px);
-    --radius-md: calc(var(--radius) - 2px);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) + 4px);
-}
-
-:root {
-    --background: #f5f6f0;
-    --foreground: #1c3027;
-    --card: #ffffff;
-    --card-foreground: #1c3027;
-    --primary: #164b37;
-    --primary-foreground: #ffffff;
-    --secondary: #e6eee7;
-    --secondary-foreground: #164b37;
-    --muted: #eef1ea;
-    --muted-foreground: #65716a;
-    --accent: #e6eee7;
-    --accent-foreground: #164b37;
-    --destructive: #b42318;
-    --border: #dce3da;
-    --input: #c4cfc4;
-    --ring: #267955;
-    --radius: 0.75rem;
-}
-
-@layer base {
-    * {
-        @apply border-border;
-    }
-    body {
-        @apply bg-background text-foreground;
-    }
-    button:not(:disabled),
-    a {
-        -webkit-tap-highlight-color: transparent;
-    }
-    input[type='checkbox'] {
-        accent-color: var(--primary);
-    }
-}
+@import './foundation.css';
+@import './workspace.css';
+@import './dashboard.css';
+@import './factory-sales.css';
+@import './payroll.css';
+@import './reports.css';

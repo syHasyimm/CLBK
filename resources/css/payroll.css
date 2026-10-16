@@ -1,0 +1,20 @@
+.payroll {
+    font-family: 'Segoe UI Variable Text', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+}
+
+.payroll-heading {
+    font-family: 'Segoe UI Variable Display', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.035em;
+    overflow-wrap: anywhere;
+}
+
+.payroll-panel {
+    border: 1px solid #e1e7dd;
+    border-radius: 1rem;
+    background: var(--card);
+    box-shadow: 0 2px 6px rgb(22 75 55 / 0.025);
+}
+
+.payroll-link {
+    @apply inline-flex items-center gap-1.5 rounded-sm text-xs font-medium text-primary transition-colors hover:text-primary/70 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring;
+}

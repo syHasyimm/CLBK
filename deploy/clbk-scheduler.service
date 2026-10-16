@@ -1,0 +1,11 @@
+[Unit]
+Description=CLBK TOKE Laravel scheduler
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/clbk/current
+ExecStart=/usr/bin/php artisan schedule:run --no-interaction
+TimeoutStartSec=10800
