@@ -2,6 +2,19 @@
 
 require dirname(__DIR__).'/vendor/autoload.php';
 
+$key = 'base64:'.base64_encode(random_bytes(32));
+putenv('APP_KEY='.$key);
+$_ENV['APP_KEY'] = $_SERVER['APP_KEY'] = $key;
+
+$path = dirname(__DIR__).'/.env.testing';
+$settings = is_file($path) ? Dotenv\Dotenv::parse(file_get_contents($path)) : [];
+foreach (['DB_HOST' => '127.0.0.1', 'DB_PORT' => '3306', 'DB_USERNAME' => 'clbk_test', 'DB_PASSWORD' => ''] as $name => $default) {
+    $value = getenv($name);
+    $value = $value === false ? ($settings[$name] ?? $default) : $value;
+    putenv($name.'='.$value);
+    $_ENV[$name] = $_SERVER[$name] = $value;
+}
+
 // This suite drops tables. Never allow it to select the operational database.
 if (getenv('DB_DATABASE') !== 'clbk_mysql_test'
     || ! in_array(getenv('DB_HOST'), ['127.0.0.1', 'localhost', '::1'], true)) {

@@ -1,6 +1,4 @@
--- CLBK TOKE production baseline: MySQL 8.4, InnoDB.
--- Laravel loads this schema on the first migrate into an empty database.
--- Historical SQLite migrations remain available for local development/tests.
+-- CLBK TOKE: MySQL 8.4, InnoDB. Loaded by the initial migration.
 SET NAMES utf8mb4 COLLATE utf8mb4_0900_bin;
 SET FOREIGN_KEY_CHECKS=0;
 SET SESSION sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
@@ -413,14 +411,6 @@ CREATE TABLE `loading_workers` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `loading_workers_unique_1` (`code`),
     CHECK (is_active IN ( 0 , 1 ))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
-
-DROP TABLE IF EXISTS `migrations`;
-CREATE TABLE `migrations` (
-    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `migration` VARCHAR(255) NOT NULL,
-    `batch` BIGINT NOT NULL,
-    PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 DROP TABLE IF EXISTS `password_reset_tokens`;
@@ -1752,16 +1742,3 @@ END;;
 DELIMITER ;
 SET FOREIGN_KEY_CHECKS=1;
 
--- Record the historical migrations incorporated in this baseline.
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (1,'0001_01_01_000000_create_users_table',1);
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (2,'0001_01_01_000001_create_cache_table',1);
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (3,'0001_01_01_000002_create_jobs_table',1);
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (4,'2026_10_09_000001_add_roles_and_master_data',1);
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (5,'2026_10_09_000002_create_prices_and_weighings',1);
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (6,'2026_10_09_000003_create_sales_and_inventory',1);
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (7,'2026_10_09_000004_create_finance',1);
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (8,'2026_10_09_000005_prepare_direct_vehicle_workflow',1);
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (9,'2026_10_10_000001_mark_automatic_sale_receipts',1);
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (10,'2026_10_10_000002_assign_driver_vehicle',1);
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (11,'2026_10_15_000001_add_whatsapp_notifications',1);
-INSERT INTO `migrations` (`id`,`migration`,`batch`) VALUES (12,'2026_10_16_000001_remove_whatsapp_notifications',1);

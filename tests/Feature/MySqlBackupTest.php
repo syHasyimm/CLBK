@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use PDO;
 use PDOException;
 use Tests\Concerns\DatabaseMigrations;
 use Tests\TestCase;
@@ -96,14 +95,26 @@ class MySqlBackupTest extends TestCase
         $customer = Customer::create(['code' => 'SAFE', 'name' => 'Keep current customer', 'is_active' => true]);
         $backup = app(MySqlBackup::class);
         try {
-            $backup->export($directory.'/invalid.sqlite');
-            $pdo = new PDO('sqlite:'.$directory.'/invalid.sqlite');
-            $pdo->exec('UPDATE customers SET is_active=2');
-            $pdo = null;
-            $state = app(BackupSnapshot::class)->inspect($directory.'/invalid.sqlite');
+            $backup->export($directory.'/invalid.jsonl');
+            $lines = file($directory.'/invalid.jsonl');
+            $customerColumns = null;
+            $table = null;
+            foreach ($lines as &$line) {
+                $record = json_decode($line, true, flags: JSON_THROW_ON_ERROR);
+                if (isset($record['table'])) {
+                    $table = $record['table'];
+                    $customerColumns = $record['columns'];
+                } elseif ($table === 'customers' && isset($record['row'])) {
+                    $record['row'][array_search('is_active', $customerColumns, true)] = base64_encode('2');
+                    $line = json_encode($record, JSON_THROW_ON_ERROR)."\n";
+                }
+            }
+            unset($line);
+            file_put_contents($directory.'/invalid.jsonl', implode('', $lines));
+            $state = app(BackupSnapshot::class)->inspect($directory.'/invalid.jsonl');
             $this->app->maintenanceMode()->activate(['time' => time()]);
             try {
-                $backup->restore($directory.'/invalid.sqlite', $state);
+                $backup->restore($directory.'/invalid.jsonl', $state);
                 $this->fail('MySQL CHECK violation was accepted during restore.');
             } catch (PDOException $error) {
                 $this->assertSame(3819, (int) $error->errorInfo[1]);

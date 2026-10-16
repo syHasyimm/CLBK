@@ -34,7 +34,7 @@ class ProofStorage
                 $record = $record->fresh();
                 abort_unless($actor && $record, 404);
                 $authorize($actor, $record);
-                // BEGIN IMMEDIATE serializes this check and the metadata insert across uploaders.
+                // The MySQL business row lock serializes quota checks and metadata inserts.
                 $this->assertCapacity($actor->id, $entityType, $record->getKey(), $size);
                 DB::afterCommit(function () use (&$committed) {
                     $committed = true;

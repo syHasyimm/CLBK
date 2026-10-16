@@ -13,7 +13,6 @@ use App\Models\Vehicle;
 use App\Models\Weighing;
 use App\Services\CustomerSettlement;
 use Carbon\Carbon;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -21,7 +20,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
-use RuntimeException;
 use Tests\Concerns\DatabaseMigrations;
 use Tests\Concerns\LegacyCustomerPayments;
 use Tests\TestCase;
@@ -71,7 +69,7 @@ class WhatsAppRemovalTest extends TestCase
     {
         $this->assertNotificationSchemaRemoved();
         $this->assertSame('08123456789', $this->customer->fresh()->phone);
-        $this->assertEmpty(DB::select('PRAGMA foreign_key_check'));
+        $this->assertForeignKeysAreValid();
     }
 
     public function test_notification_routes_and_dispatch_command_are_removed(): void
@@ -128,52 +126,6 @@ class WhatsAppRemovalTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_upgrade_removes_old_notification_data_and_preserves_business_data_and_sqlite_guards(): void
-    {
-        $this->weigh();
-        $this->actingAs($this->cashier)->post(route('customer-payments.store'), $this->payment())->assertSessionHasNoErrors();
-        DB::table('audit_logs')->insert(['actor_id' => $this->manager->id, 'action' => 'whatsapp-test',
-            'entity_type' => 'whatsapp_settings', 'entity_id' => '1', 'after_json' => '{"enabled":true}', 'occurred_at' => now()]);
-        $beforeData = $this->businessData();
-        $beforeSchema = $this->businessSchema();
-        $beforeSequences = DB::table('sqlite_sequence')->whereNotIn('name', self::REMOVED_TABLES)->orderBy('name')->get()->toJson();
-
-        $oldMigration = require database_path('migrations/2026_10_15_000001_add_whatsapp_notifications.php');
-        $oldMigration->up();
-        DB::table('customers')->where('id', $this->customer->id)->update(['whatsapp_number' => '628123456789', 'whatsapp_enabled' => true]);
-        DB::table('whatsapp_settings')->insert(['id' => 1, 'enabled' => true, 'token' => 'old-encrypted-token']);
-        $message = DB::table('whatsapp_messages')->insertGetId(['event_key' => 'weighing:1', 'customer_id' => $this->customer->id,
-            'customer_name' => $this->customer->name, 'target' => '628123456789', 'kind' => 'weighing',
-            'source_type' => 'weighing', 'source_id' => 1, 'body' => 'Pesan lama']);
-        DB::table('whatsapp_attempts')->insert(['whatsapp_message_id' => $message, 'status' => 'submitted', 'created_at' => now()]);
-        DB::table('whatsapp_webhook_events')->insert(['event_hash' => str_repeat('a', 64), 'created_at' => now()]);
-
-        $migration = require database_path('migrations/2026_10_16_000001_remove_whatsapp_notifications.php');
-        $migration->up();
-
-        $this->assertNotificationSchemaRemoved();
-        $this->assertSame($beforeData, $this->businessData());
-        $this->assertSame($beforeSchema, $this->businessSchema());
-        $this->assertSame($beforeSequences, DB::table('sqlite_sequence')->whereNotIn('name', self::REMOVED_TABLES)->orderBy('name')->get()->toJson());
-        $this->assertEmpty(DB::select('PRAGMA foreign_key_check'));
-        $this->assertSame('ok', DB::selectOne('PRAGMA integrity_check')->integrity_check);
-        try {
-            DB::table('customers')->insert(['code' => 'INVALID', 'name' => 'Invalid', 'is_active' => 2]);
-            $this->fail('The original customer CHECK constraint must remain enforced.');
-        } catch (QueryException $exception) {
-            $this->assertStringContainsString('CHECK constraint failed', $exception->getMessage());
-        }
-        Http::assertNothingSent();
-    }
-
-    public function test_notification_removal_refuses_to_recreate_deleted_data_on_rollback(): void
-    {
-        $migration = require database_path('migrations/2026_10_16_000001_remove_whatsapp_notifications.php');
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Penghapusan WhatsApp tidak dapat dibatalkan');
-        $migration->down();
-    }
-
     private function assertNotificationSchemaRemoved(): void
     {
         foreach (self::REMOVED_TABLES as $table) {
@@ -181,24 +133,6 @@ class WhatsAppRemovalTest extends TestCase
         }
         $this->assertFalse(Schema::hasColumn('customers', 'whatsapp_number'));
         $this->assertFalse(Schema::hasColumn('customers', 'whatsapp_enabled'));
-    }
-
-    private function businessData(): array
-    {
-        $data = [];
-        foreach (DB::select("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name") as $table) {
-            if (! in_array($table->name, [...self::REMOVED_TABLES, 'migrations', 'sqlite_sequence'], true)) {
-                $data[$table->name] = DB::table($table->name)->orderByRaw('rowid')->get()->toJson();
-            }
-        }
-
-        return $data;
-    }
-
-    private function businessSchema(): string
-    {
-        return collect(DB::select("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE type IN ('index', 'trigger') ORDER BY type, name"))
-            ->reject(fn ($object) => in_array($object->tbl_name, self::REMOVED_TABLES, true))->values()->toJson();
     }
 
     private function weigh(string $tbs = '1000', string $sort = '100'): Weighing

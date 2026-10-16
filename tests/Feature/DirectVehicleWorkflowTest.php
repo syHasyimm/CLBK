@@ -156,12 +156,12 @@ class DirectVehicleWorkflowTest extends TestCase
             $this->assertDatabaseCount('sort_sales', 0);
         }
         $this->sort();
-        $migration = require database_path('migrations/2026_10_09_000005_prepare_direct_vehicle_workflow.php');
+        $migration = require database_path('migrations/2026_10_17_000001_create_clbk_schema.php');
         try {
             $migration->down();
             $this->fail('Rollback discarded a direct record');
         } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('Cannot roll back', $e->getMessage());
+            $this->assertStringContainsString('tidak dapat dihapus melalui rollback', $e->getMessage());
         }
         $this->assertDatabaseCount('sort_sales', 1);
         $this->assertForeignKeysAreValid();

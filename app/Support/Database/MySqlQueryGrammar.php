@@ -5,7 +5,7 @@ namespace App\Support\Database;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Grammars\MySqlGrammar;
 
-/** Preserve SQLite's case-insensitive LIKE without weakening binary unique keys/enums. */
+/** Keep reference search case-insensitive without weakening binary unique keys/enums. */
 final class MySqlQueryGrammar extends MySqlGrammar
 {
     protected function whereBasic(Builder $query, $where)

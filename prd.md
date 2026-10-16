@@ -1,10 +1,10 @@
 # PRD — CLBK TOKE
 
 > Rencana produk dan implementasi aplikasi pengelolaan usaha toke sawit.
-> Status: aplikasi web dan tahap 1–6 PRD telah diimplementasikan. Tahap 6 mencakup backup/restore terverifikasi, monitoring, dan konfigurasi deployment Coolify dengan Nginx + PHP-FPM. Pengujian browser perangkat nyata, cetak, dan verifikasi server produksi tetap perlu dilakukan. Penyederhanaan workflow tahap 1–4 selesai; pemeriksaan akhir workflow merupakan acuan terpisah.
+> Status: aplikasi web berada dalam pengembangan lokal menggunakan MySQL 8.4. Backup/restore dan monitoring tersedia; konfigurasi deploy dikeluarkan dari source selama belum dibutuhkan.
 > Bahasa antarmuka: Indonesia. Mata uang: Rupiah. Satuan tampilan berat: kilogram.
 
-**Acuan workflow terbaru:** [rencana workflow sederhana](docs/rencana-workflow-sederhana.md). Transaksi baru langsung memilih mobil, timbangan cukup konsumen/TBS/sortir/anggota, penjualan pabrik hanya memakai berat bersih dengan harga otomatis, dan penjualan sortir memakai berat serta harga manual. Muatan Mobil dan Stok Sortir sudah dihapus dari menu, halaman, dan URL operasional. Ketentuan perjalanan, retur, FIFO, dan laba per nota dalam bagian lama di bawah ini menjadi acuan histori, bukan workflow transaksi baru. Seluruh Data Master tetap seperti sekarang. [Tahap 1 transisi data](docs/workflow-sederhana-tahap-1.md), [tahap 2 Timbang Sawit](docs/workflow-sederhana-tahap-2.md), serta [tahap 3–4 penjualan dan pembersihan workflow](docs/workflow-sederhana-tahap-3-4.md) selesai. Timbangan dan penjualan baru disimpan sah dalam satu langkah, dengan harga terkunci dan pembayaran/penerimaan terpisah. Penjualan pabrik dan sortir sama-sama dibayar melalui [Penerimaan Penjualan](docs/penerimaan-semua-penjualan.md). Dashboard/Laporan menggunakan selisih transaksi periode tanpa menghitung pembayaran konsumen atau gaji sebagai biaya lagi; pengeluaran tidak memakai perjalanan. [Tahap 5 PRD: Dashboard dan laporan](docs/tahap-5.md) telah diimplementasikan sesuai workflow ini. Tahap 5 dalam rencana penyederhanaan tetap merupakan pemeriksaan akhir workflow yang terpisah.
+**Acuan workflow terbaru:** [rencana workflow sederhana](docs/rencana-workflow-sederhana.md). Transaksi baru langsung memilih mobil, timbangan cukup konsumen/TBS/sortir/anggota, penjualan pabrik hanya memakai berat bersih dengan harga otomatis, dan penjualan sortir memakai berat serta harga manual. Muatan Mobil dan Stok Sortir sudah dihapus dari menu, halaman, dan URL operasional. Ketentuan perjalanan, retur, FIFO, dan laba per nota dalam bagian lama di bawah ini menjadi acuan histori, bukan workflow transaksi baru. Seluruh Data Master tetap seperti sekarang. Transisi workflow langsung telah selesai. Timbangan dan penjualan baru disimpan sah dalam satu langkah, dengan harga terkunci dan pembayaran/penerimaan terpisah. Penjualan pabrik dan sortir sama-sama dibayar melalui [Penerimaan Penjualan](docs/penerimaan-semua-penjualan.md). Dashboard/Laporan menggunakan selisih transaksi periode tanpa menghitung pembayaran konsumen atau gaji sebagai biaya lagi; pengeluaran tidak memakai perjalanan. Dashboard dan laporan telah diimplementasikan sesuai workflow ini. Tahap 5 dalam rencana penyederhanaan tetap merupakan pemeriksaan akhir workflow yang terpisah.
 
 **Keuntungan bersih Dashboard (pilihan pengguna terbaru):** untuk periode yang dipilih, pendapatan penjualan pabrik + sortir − pembelian buah − hak upah muat − pengeluaran operasional. Label ini menggantikan Selisih transaksi periode pada Dashboard, laporan, CSV, dan cetak. Pembayaran konsumen/gaji tidak dihitung sebagai biaya kedua kali. Angka tersedia bagi manajer ketika semua mobil dipilih; pembelian dan penjualan dapat terjadi pada tanggal yang berbeda. Rincian tampilan tersedia pada [pembaruan Dashboard](docs/redesain-dashboard.md).
 
@@ -51,7 +51,7 @@ Sistem harus menjawab pertanyaan berikut dengan jelas:
 | Frontend | ReactJS + TypeScript. |
 | Backend | Laravel 13. |
 | Autentikasi | Laravel Breeze, dengan verifikasi kompatibilitas pada tahap fondasi. |
-| Database | SQLite pada disk lokal server. |
+| Database | MySQL 8.4, InnoDB. |
 | Styling dan komponen | TailwindCSS + shadcn/ui. |
 
 ### 2.2 Lingkup MVP
@@ -429,7 +429,7 @@ Status transaksi dan status pembayaran dipisahkan:
 - Key yang sama dengan isi berbeda ditolak.
 - Hak tersisa, stok tersisa, status trip, dan harga diperiksa ulang di dalam transaksi tulis.
 - Dua kasir yang membayar tagihan sama tidak boleh membuat saldo negatif.
-- SQLite tidak diperlakukan seperti database dengan row lock. Rancangan utama memakai koordinator transaksi tulis yang memperoleh write lock sebelum membaca saldo, misalnya semantik `BEGIN IMMEDIATE`, lalu membaca ulang saldo dan menjalankan perubahan pada koneksi yang sama. Integrasi dengan pengelolaan transaksi Laravel, rollback, dan retry harus dibuktikan pada tahap fondasi. [SQLite Transactions](https://www.sqlite.org/lang_transaction.html)
+- Koordinator transaksi tulis mengambil row lock MySQL pada `database_write_locks` sebelum membaca saldo dan menjalankan perubahan pada koneksi yang sama. Konflik 1205/1213 dicoba ulang dengan idempotensi.
 - Kesalahan konflik/busy menghasilkan pesan yang jelas dan retry terbatas; pengguna tidak diminta mengirim pembayaran baru tanpa pengecekan hasil sebelumnya.
 
 ## 7. Workflow sistem
@@ -588,14 +588,14 @@ flowchart LR
     Web[Browser komputer atau ponsel] --> App[Server Laravel 13 dan halaman React]
     App --> Auth[Session Breeze, CSRF, dan policies]
     Auth --> Actions[Actions bisnis dan perhitungan server]
-    Actions --> DB[(SQLite di disk lokal server)]
+    Actions --> DB[(MySQL 8.4)]
     Actions --> Files[Storage bukti dan hasil ekspor]
     DB --> Backup[Backup konsisten di lokasi terpisah]
 ```
 
 - React dirender melalui halaman Inertia; route utama dikelola Laravel.
 - Backend menjadi pemilik aturan harga, pembagian upah, saldo, stok, dan laba.
-- SQLite hanya berada di server. Browser komputer dan ponsel mengakses aplikasi pada origin HTTPS yang sama melalui Laravel.
+- MySQL hanya diakses backend. Browser komputer dan ponsel mengakses aplikasi pada origin HTTPS yang sama melalui Laravel.
 - Seluruh role membaca data yang sama. Jika server ada di kantor, aplikasi tetap dapat dipakai lewat LAN saat internet luar terputus, selama server dan LAN hidup.
 - Ketika koneksi server terputus, tampilkan status koneksi dan blokir posting. Tidak ada janji transaksi offline tersinkronisasi pada MVP.
 
@@ -603,7 +603,7 @@ flowchart LR
 
 Laravel 13 membutuhkan PHP minimal 8.3. Kebutuhan runtime mengikuti dokumentasi rilis resminya. [Laravel 13 Release Notes](https://laravel.com/framework/docs/13.x/releases)
 
-Hasil implementasi fondasi CLBK TOKE menetapkan runtime proyek **PHP 8.4+**. Pada versi Laravel yang terpasang, pengaturan transaksi SQLite `IMMEDIATE` dijalankan secara native ketika PHP 8.4+ digunakan. Batas ini dicantumkan dalam `composer.json` agar write lock diperoleh sebelum pembacaan saldo.
+Runtime proyek adalah **PHP 8.4+** dengan `pdo_mysql`. Seluruh transaksi usaha memakai row lock MySQL melalui koordinator aplikasi.
 
 Autentikasi menggunakan **Breeze** dengan baseline rilis `v2.4.2`:
 
@@ -625,11 +625,9 @@ Pilih satu versi mayor Tailwind yang didukung hasil scaffolding dan versi shadcn
 - Cetak/PDF, ekspor CSV, serta unggah/unduh bukti menggunakan fasilitas browser.
 - Seluruh transaksi memerlukan koneksi ke satu server bersama; tidak ada pencatatan offline tersinkronisasi.
 
-### 8.5 SQLite dan akses bersama
+### 8.5 MySQL dan akses bersama
 
-SQLite cocok sebagai database server kecil dengan pola tulis yang terkendali. File database disimpan pada disk lokal server; client berkomunikasi lewat Laravel, bukan network share. SQLite mempunyai batas satu writer pada satu waktu, sehingga transaksi harus singkat dan beban tulis diuji. [Appropriate Uses for SQLite](https://www.sqlite.org/whentouse.html)
-
-Konfigurasi server memakai foreign key aktif pada setiap koneksi, `busy_timeout` terukur, WAL, serta retry yang tidak menggandakan transaksi. Lock wait, busy error, dan latensi diukur saat tiga role bekerja bersamaan.
+MySQL 8.4 memakai InnoDB, strict mode, foreign key, dan REPEATABLE READ. Koordinator serialisasi penulisan menjaga pemeriksaan saldo pada koneksi yang sama; laporan memakai read snapshot konsisten. Pengujian konkurensi memakai koneksi/proses MySQL terpisah.
 
 ## 9. Struktur folder
 
@@ -805,7 +803,7 @@ Aturan folder:
 - `Policies` memutuskan izin role dan lingkup trip.
 - `Requests` memvalidasi bentuk input; action tetap memeriksa aturan lintas transaksi.
 - Jangan membuat repository generik untuk setiap model bila Eloquent sudah cukup; tambah abstraksi hanya jika benar-benar diperlukan.
-- File SQLite produksi berada di direktori data server yang tidak diakses publik dan tidak masuk Git. Bukti serta backup juga tidak masuk Git.
+- Data MySQL, bukti privat, backup, dan kredensial tidak masuk Git atau direktori publik.
 
 ## 10. Komponen UI reusable
 
@@ -858,13 +856,13 @@ Filter aktif hanya membatasi referensi untuk pekerjaan baru. Konsumen dan anggot
 - Berat: `INTEGER` gram, misalnya 1.250,500 kg disimpan `1250500` gram.
 - Nominal: `INTEGER` rupiah; harga/tarif awal per kg juga integer rupiah.
 - Perkalian berat dengan harga memakai aritmetika integer: `round_half_up(grams × rate_idr / 1000)`.
-- Hindari `FLOAT` untuk uang dan biaya persediaan. SQLite menyatakan floating point bersifat aproksimasi; integer dipilih agar hasil tepat. [SQLite Floating Point](https://www.sqlite.org/floatingpoint.html)
+- Hindari `FLOAT` untuk uang dan biaya persediaan. Gunakan nilai integer agar perhitungan tepat.
 - Waktu kejadian disimpan UTC sebagai timestamp konsisten; `business_date` disimpan `YYYY-MM-DD` sesuai zona usaha untuk filter harian.
 - `created_at` dan `updated_at` ada pada tabel master/dokumen. `created_by`/`posted_by` FK ke `users` pada dokumen sesuai aksi.
 - Tabel snapshot, alokasi, dan ledger menyimpan waktu penciptaan dan tidak diedit nominalnya setelah posting.
 - Setiap header yang dapat dibalik menyimpan `reversed_at`, `reversal_business_date`, `reversed_by`, dan `reversal_reason`; pembalikan tidak mengubah tanggal kejadian asli.
 - Status memakai string terbatas dengan `CHECK`; boolean berupa integer `0/1`.
-- Semua nominal dan berat positif/nonnegatif diberi `CHECK` sesuai konteks. FK diaktifkan pada setiap koneksi. [SQLite Foreign Keys](https://www.sqlite.org/pragma.html#pragma_foreign_keys)
+- Semua nominal dan berat positif/nonnegatif diberi `CHECK` sesuai konteks. Foreign key dan trigger MySQL menjaga integritas relasi serta histori.
 - Kolom JSON berbentuk TEXT JSON valid hanya untuk metadata/audit; saldo, berat, dan alokasi tidak disembunyikan dalam JSON.
 
 Notasi pada tabel: `PK` primary key; `FK` foreign key; `UQ` unik; `?` nullable. Kolom audit umum mengikuti konvensi di atas.
@@ -1235,14 +1233,14 @@ Navigasi terbaru mengikuti workflow sederhana. Pada ponsel/tablet, supir memakai
 ### 15.3 Backup, restore, dan deployment
 
 - Backup harian database dan storage bukti, serta backup sebelum upgrade.
-- Gunakan snapshot database yang konsisten/SQLite Backup API; jangan menyalin file utama database aktif tanpa menangani WAL dan konsistensinya. [SQLite Backup API](https://www.sqlite.org/backup.html)
+- Gunakan satu read transaction MySQL yang konsisten; cadangan ZIP format 2 menyimpan `database.jsonl`, bukti privat, checksum, dan tanda tangan HMAC.
 - Simpan backup di lokasi berbeda dari disk data utama; retention awal 7 harian dan 4 mingguan, dapat diatur manajer. Pengecualian sesuai pilihan pemilik pada 16 Oktober 2026: VPS Hostinger boleh memakai folder backup lokal tersendiri dengan `BACKUP_REQUIRE_SEPARATE_DISK=false`. Backup harus privat dan persisten, terpisah dari folder bukti. Mode ini tidak melindungi kerusakan disk/VPS; salinan ke luar VPS tetap disarankan. Mode `true` mempertahankan kewajiban perangkat berbeda pada produksi.
 - Target awal: kehilangan data maksimal 24 jam dengan backup harian; pemulihan ≤ 2 jam setelah mesin pengganti tersedia, harus dibuktikan dengan simulasi restore.
 - Restore dilakukan dalam maintenance mode setelah backup kondisi sekarang, dengan pemeriksaan jumlah dokumen, saldo kas, utang, stok, dan akses bukti.
 - Deployment memakai web server produksi yang mendukung PHP 8.4+ sesuai runtime fondasi; development server bukan rancangan server produksi.
 - Dokumentasikan lokasi DB/storage, pemilik proses, izin file, URL, HTTPS, jadwal backup, dan prosedur upgrade.
 - Migrasi dijalankan sekali pada server; browser memuat aset dari rilis aplikasi yang sama dan tidak membuka database secara langsung.
-- Pantau kegagalan posting, konflik SQLite, backup gagal, dan ruang disk.
+- Pantau kegagalan posting, konflik MySQL, backup gagal, dan ruang disk.
 
 ## 16. Acceptance criteria dan rencana pengujian
 
@@ -1297,86 +1295,14 @@ Jenis pengujian:
 
 - Unit: resolusi harga, pembulatan berat/harga, pembagian upah, alokasi biaya stok, rumus laba.
 - Feature: posting, pembayaran, pembalikan, policy role, transaksi rollback, idempotensi.
-- Integrasi SQLite nyata: write contention, saldo/stok bersamaan, FK, partial unique index, backup/restore.
+- Integrasi MySQL nyata: write contention, saldo/stok bersamaan, FK, partial unique index, backup/restore.
 - Uji alur pengguna: satu hari kerja lengkap dan pembayaran hari berikutnya di browser komputer dan ponsel.
 
-## 17. Tahapan implementasi
+## 17. Status implementasi
 
-| Tahap | Hasil konkret | Syarat selesai |
-|---|---|---|
-| 0. Validasi fondasi | Laravel 13 + Breeze React/Inertia, Tailwind/shadcn, SQLite, status koneksi browser | Login, build, session browser, strategi write lock dan kompatibilitas terbukti |
-| 1. Identitas dan master | Akun/role, konsumen, anggota, mobil, pabrik, akun kas, pengaturan usaha | Policy dan CRUD/nonaktif berjalan; seed awal siap |
-| 2. Harga dan timbang | Versi harga, trip loading, tiket, snapshot, hak anggota, stok sortir awal | AC harga dan pembagian upah lulus |
-| 3. Penjualan dan stok | Keberangkatan, input sortir dan bersih pabrik manual, harga pabrik otomatis, input penjualan sortir manual, rekonsiliasi dan stok | Berat tidak mengambil total konsumen; nota memakai bersih akhir langsung; biaya dan hasil dapat ditelusuri |
-| 4. Keuangan | Pembayaran konsumen, gaji, penerimaan penjualan, biaya, ledger kas, pembalikan | Konflik, idempotensi, saldo, dan audit lulus |
-| 5. Dashboard dan laporan | Metrik, drill-down, filter, CSV, cetak, bukti, audit | Rumus selisih periode/utang/piutang/kas sama dengan dokumen sumber dan seluruh hasil ekspor |
-| 6. Deployment dan operasional | Coolify, HTTPS, cetak/unduh web, backup/restore, monitoring | Hari kerja lengkap dan pemulihan data terbukti |
+Alur web utama, hak akses, master data, timbang langsung, penjualan, pembayaran, kas tunggal, dashboard, laporan, serta backup/restore sudah tersedia. Pengembangan lokal dan seluruh pengujian memakai MySQL 8.4. Panduan aktif berada di [README](README.md), [konfigurasi MySQL](docs/mysql.md), dan [backup/restore](docs/backup-restore.md).
 
-Tahap 2 dan 3 mendahului laporan laba agar laporan mempunyai transaksi dan biaya asal yang benar. UI pembayaran dapat dipersiapkan lebih awal, tetapi posting keuangan tidak dirilis sebelum integritas dan kontrol konflik siap.
-
-Pengembangan mengikuti urutan tahap di atas. Setiap tahap menghasilkan modul yang dapat ditinjau dengan aturan dalam PRD ini.
-
-### 17.1 Status implementasi fondasi — 9 Oktober 2026
-
-Fondasi web telah diimplementasikan dan lolos 40 pengujian otomatis, build frontend, serta pemeriksaan login/logout di browser pada saat tahap 0. Tahap 1 dilanjutkan sesuai instruksi pengguna dan statusnya dicatat di bagian 17.2. Rincian fondasi terdapat di README.md dan docs/tahap-0.md.
-
-### 17.2 Status tahap 1 — 9 Oktober 2026
-
-Akun/role, CRUD/nonaktif konsumen, anggota muat, mobil, pabrik, akun kas/bank, kategori biaya awal, serta pengaturan usaha sudah diimplementasikan. Akses pengelolaan dibatasi untuk manajer melalui policy di server. Supir/kasir memperoleh referensi aktif yang dibutuhkan melalui endpoint pemilih; data kontak/catatan privat tidak ikut dikirim. Akun nonaktif ditolak saat login dan sesi lama mengikuti perubahan status/role. Minimal satu manajer aktif dipertahankan.
-
-Semua perubahan master, akun melalui menu administrasi/bootstrap, dan pengaturan diaudit secara append-only bersama transaksi tulis SQLite. Seed awal dapat diulang tanpa menimpa perubahan dan tidak membuat kredensial atau konsumen contoh. Zona waktu WIB dan toleransi berat 2% tetap mengikuti bagian 18. Kapasitas mobil dikonversi dari input kg menjadi integer gram dengan maksimal tiga desimal.
-
-Pengujian otomatis, build frontend, pemeriksaan format, dan alur browser dicatat di `docs/tahap-1.md`. Riwayat transaksi pada detail master, saldo kas, dan bukti transaksi mengikuti tahap modul sumbernya. Harga referensi pabrik sudah tersedia pada tahap 2; alur penjualan manual pada bagian 5.3 tetap menjadi acuan tahap 3.
-
-### 17.3 Status tahap 2 — 9 Oktober 2026
-
-Versi harga beli TBS/sortir dan upah muat, riwayat harga pabrik, pembukaan perjalanan loading, draft/edit/hapus tiket, pratinjau, pengesahan dengan snapshot, hak konsumen dan anggota, alokasi biaya muat kategori, serta lot dan ledger stok sortir awal sudah diimplementasikan. Publikasi harga lama tidak ditimpa; harga wajib tersedia pada tanggal usaha tiket. Harga pratinjau yang berubah memerlukan persetujuan ulang. Supir memakai waktu server dan hanya mengakses perjalanan yang ditugaskan kepadanya.
-
-Upah ditanggung toke, dasar upah memakai TBS + sortir awal, dan pembagian anggota serta kategori memakai aritmetika integer yang dapat direkonsiliasi. Tiket sah tidak dapat diubah nominalnya atau dihapus. Pembatalan oleh manajer memerlukan alasan, trip masih loading, dan stok belum bergerak; reversal stok serta relasi tiket pengganti menjaga histori. Pengesahan/pembatalan memakai idempotensi, audit, pemeriksaan versi, dan transaksi SQLite yang sama.
-
-Seluruh 102 pengujian otomatis (910 assertions), build frontend, dan pemeriksaan browser tahap 2 tercatat di `docs/tahap-2.md`. Pengujian bersamaan memakai dua proses terpisah pada database WAL. Berat muatan pabrik tidak pernah diisi dari total tiket. Keberangkatan, penjualan pabrik dengan tiga berat manual, retur pabrik, dan penjualan sortir manual tetap menjadi tahap 3; pembayaran dan gaji menjadi tahap 4.
-
-### 17.4 Status tahap 3 — 9 Oktober 2026
-
-Keberangkatan dan pembekuan biaya TBS, draft/edit/hapus nota pabrik/sortir, pengesahan, tiga berat pabrik manual, harga aktual/potongan, persetujuan selisih versi terbaru, stok retur, FIFO penjualan sortir manual, sisa berat/biaya, kehilangan stok dan pembalikannya, bukti privat, serta penutupan perjalanan sudah diimplementasikan. Input berat tidak mengambil total konsumen atau seluruh stok. Berat bersih pabrik digunakan langsung.
-
-Retur membawa biaya TBS dari snapshot keberangkatan dan tidak menambah hak konsumen. Biaya unavailable tetap null dan margin ditampilkan **Belum lengkap**. Penjualan membentuk piutang dan ledger pendapatan/biaya; belum mencatat kas. Pembalikan nota mempertahankan histori, memakai tanggal pembalikan untuk ledger laba, dan mensyaratkan stok retur kembali tepat ke berat/biaya asal. Nota pengganti memakai nomor baru, tautan `replaces_sale_id` pada masing-masing tabel penjualan, alasan koreksi, serta snapshot biaya asal yang tetap terkunci. Trip koreksi tidak memesan ulang mobil aktif.
-
-Seluruh 134 pengujian PHP (1.489 assertions), build frontend/TypeScript, pemeriksaan format, dan alur browser manajer/supir/kasir serta layar 390 × 844 lulus. Contoh bagian 12.6 menghasilkan Rp210.000 setelah muat dan sebelum biaya lain; dua proses SQLite yang berebut stok hanya mengesahkan satu penjualan bila stok tidak cukup. Migrasi mempertahankan seluruh baris pada 19 tabel lama dibanding backup konsisten, dengan integrity/FK check lulus. Rincian tercatat di `docs/tahap-3.md`.
-
-Cakupan pembayaran dan kas telah diselesaikan pada tahap 4 sebagaimana bagian 17.5. Pembalikan nota/tiket kini menahan alokasi uang yang masih sah. Dashboard/laporan lengkap tetap mengikuti tahap 5.
-
-### 17.5 Status tahap 4 — 9 Oktober 2026
-
-Pembayaran konsumen dan gaji sebagian/lunas, card Belum Lunas/Lunas dengan snapshot tiket, pilihan hak dan alokasi pekerjaan tertua, periode gaji, penerimaan penjualan pabrik/sortir, pengeluaran harian, ledger kas/bank, saldo awal/modal/penarikan, bukti privat, serta voucher dengan format cetak A4 sudah diimplementasikan. Hak konsumen tidak dipotong upah; harga dan hak anggota tetap menggunakan snapshot. Penerima nonaktif yang masih mempunyai hak tetap dapat dibayar.
-
-Penerimaan piutang tidak menambah pendapatan kedua kali. Pembayaran konsumen/gaji tidak membebankan biaya ulang. Pengeluaran mencatat biaya dan kas tepat satu kali. Kas tidak boleh negatif; pemeriksaan saldo, versi/sisa hak, sumber, idempotensi, dan audit dilakukan di bawah write lock SQLite. Kasir/manajer mencatat transaksi keuangan, sedangkan pembalikan dan modal dibatasi ke manajer. Pembalikan memerlukan alasan serta kejadian/referensi pengembalian uang dan membentuk jurnal lawan arah hari ini, tanpa menghapus voucher, alokasi, atau laba hari lama.
-
-Pembatalan tiket menahan pembayaran konsumen dan gaji aktif; pembalikan nota menahan penerimaan penjualan aktif. Proteksi sumber, rekonsiliasi nominal, ledger append-only, serta larangan perubahan/penghapusan voucher tersedia pada aplikasi dan database. Seluruh 161 pengujian PHP (1.934 assertions), build/TypeScript, dan pemeriksaan format lulus. Migrasi mempertahankan data pada 26 tabel lama dibanding backup dan pemeriksaan integrity/FK lulus. Rincian konkurensi dua kasir, pemeriksaan browser manajer/kasir/supir dan layar ponsel, serta backup dicatat di `docs/tahap-4.md`. Dashboard/laporan dan pemulihan operasional tetap mengikuti tahap 5–6.
-
-### 17.6 Revisi formulir penjualan pabrik — 9 Oktober 2026
-
-Form tambah/edit nota pabrik tidak lagi meminta berat muatan awal atau alasan potongan. Harga jual otomatis memakai versi harga pabrik pada waktu penjualan dan disimpan sebagai snapshot; nilai dari browser tidak digunakan. Total internal dihitung dari sortir dan bersih diterima bila berat awal tidak dikirim. Data lama tetap terbaca. Persetujuan selisih pada detail nota memakai tombol tanpa input alasan, dengan catatan standar pada audit. Form unggah bukti pabrik dihilangkan; berkas yang sudah tersimpan tetap dapat dilihat. Form penjualan sortir tetap memakai harga manual, alasan potongan, dan unggah bukti.
-
-Verifikasi: 58 pengujian penjualan/keuangan berhasil (992 assertions), TypeScript dan build frontend berhasil, serta pengecekan browser pada formulir dan detail nota nomor 2 menunjukkan kolom yang diminta sudah dihilangkan dan harga otomatis Rp3.100/kg tidak dapat diedit.
-
-### 17.7 Status tahap 5 PRD — 10 Oktober 2026
-
-Dashboard dan laporan telah diimplementasikan: tautan metrik ke rincian sumber, filter sesuai jenis laporan, utang konsumen/upah dan piutang saat ini, arus kas per akun, ringkasan harian/per mobil, rincian timbang/penjualan/penerimaan/pengeluaran, serta audit khusus manajer. Penjualan pabrik dan sortir sama-sama memakai penerimaan terpisah. CSV dan cetak memakai query serta filter yang sama dengan layar, memuat seluruh halaman dan total yang sama, termasuk kilogram tiga desimal dan pembalikan lintas tanggal WIB. Bukti tetap mengikuti otorisasi dokumen sumber.
-
-Seluruh **227 pengujian PHP (4.849 assertions)**, build frontend/TypeScript, Pint, dan Prettier lulus. Pengujian mencakup rekonsiliasi sumber, 55 baris lintas halaman, status sebagian/lunas, histori master nonaktif, hak akses seluruh endpoint, formula CSV/escaping cetak, pembalikan lewat tengah malam WIB, saldo berjalan dari histori sebelum periode, bukti privat, perubahan audit tanpa atribut sensitif, dan snapshot pembacaan SQLite ketika koneksi lain menulis. Pembacaan database lokal memakai mode read-only; semua laporan cocok dengan ringkasan sumber, integrity check `ok`, dan tidak ada pelanggaran foreign key. Tahap ini tidak memerlukan migrasi baru atau perubahan transaksi lokal.
-
-Status verifikasi: implementasi dan pemeriksaan otomatis selesai; pemeriksaan visual browser, layar ponsel, serta tata letak hasil cetak manual belum dilakukan karena koneksi browser/komputer tidak tersedia pada sesi ini. Rincian penggunaan, hasil, dan batas cakupan tersedia pada [hasil tahap 5](docs/tahap-5.md). Tahap 5 pemeriksaan akhir dalam rencana workflow sederhana merupakan acuan terpisah; deployment/backup-restore tetap tahap 6 PRD.
-
-### 17.8 Status tahap 6 PRD — 16 Oktober 2026
-
-Deployment memakai Coolify dengan Nginx + PHP-FPM 8.4 pada satu VPS. Browser komputer dan ponsel mengakses origin HTTPS yang sama. Source, secret runtime, storage data persisten, serta folder backup lokal tersendiri untuk pilihan Hostinger terbaru dijelaskan di DEPLOY.md. Mode disk backup terpisah tetap tersedia lewat `BACKUP_REQUIRE_SEPARATE_DISK=true`.
-
-Implementasi awal backup menggabungkan snapshot SQLite konsisten yang menangani WAL dan bukti privat, manifest HMAC/SHA256, retensi default tujuh harian/empat mingguan yang dapat diubah manajer, jadwal harian, serta penolakan lokasi publik. Pada konfigurasi produksi terbaru, pemeriksaan perangkat berbeda mengikuti `BACKUP_REQUIRE_SEPARATE_DISK`; mode lokal Hostinger memakai `false` sesuai bagian 15.3. Restore memerlukan maintenance, backup kondisi sekarang, kode migrasi yang cocok, dan rekonsiliasi seluruh tabel usaha, kas/utang/piutang/stok/harga snapshot/bukti. Sesi/reset token/remember token/cache dicabut dan audit restore ditambahkan. Mesin pengganti memakai opsi khusus yang menolak database nonkosong. Pemeriksaan clbk:doctor memantau integritas, kapasitas data, backup dan scheduler.
-
-Simulasi terisolasi sebelumnya memulihkan 33 tabel usaha dan bukti dengan checksum cocok dalam 0,066 detik pada dataset sintetis kecil. Tes tambahan mempertahankan piutang belum diterima dan histori stok bersaldo. Alur satu hari kerja sampai pelunasan hari berikutnya lulus melalui controller HTTP, dengan kas akhir Rp4.990.000 dan keuntungan periode −Rp10.000 tanpa biaya ganda.
-
-Verifikasi server produksi belum ditutup: Docker build/run di Coolify, DNS/HTTPS, SMTP, permission/storage, scheduler, backup/offsite, alarm, restore dan p95 10.000 tiket perlu dibuktikan pada mesin target. AC-34/35 diperiksa melalui browser komputer dan ponsel; AC-36 memerlukan latihan pemulihan pada data representatif. Rincian pengujian terbaru dicatat pada [hasil tahap 6](docs/tahap-6.md), [panduan Coolify](DEPLOY.md), dan [backup/restore](docs/backup-restore.md).
+Catatan rollout historis dipindahkan dari source saat pembersihan proyek. Infrastruktur deploy akan disiapkan kembali ketika dibutuhkan. Pemeriksaan penerimaan pengguna, browser perangkat nyata, cetak, dan performa pada server target tetap diperlukan sebelum produksi.
 
 ## 18. Ketetapan implementasi
 
@@ -1400,8 +1326,9 @@ Ketentuan berikut ditetapkan untuk implementasi dan tidak memerlukan masukan tam
 
 ## 19. Referensi dokumentasi
 
-Dokumentasi Laravel dan shadcn diperiksa melalui Context7 dengan library ID `/laravel/docs/__branch__13.x` dan `/shadcn-ui/ui`. Pemeriksaan tambahan menggunakan sumber resmi untuk deklarasi Breeze dan karakteristik SQLite.
+Dokumentasi Laravel dan shadcn diperiksa melalui Context7 dengan library ID `/laravel/docs/__branch__13.x` dan `/shadcn-ui/ui`. Pemeriksaan tambahan menggunakan sumber resmi untuk deklarasi Breeze dan konfigurasi MySQL.
 
+- [MySQL 8.4 Reference Manual](https://dev.mysql.com/doc/refman/8.4/en/)
 - [Laravel 13 Release Notes](https://laravel.com/framework/docs/13.x/releases)
 - [Laravel 13 Starter Kits](https://laravel.com/framework/docs/13.x/starter-kits)
 - [Laravel Breeze repository](https://github.com/laravel/breeze)
@@ -1410,10 +1337,5 @@ Dokumentasi Laravel dan shadcn diperiksa melalui Context7 dengan library ID `/la
 - [shadcn/ui documentation](https://ui.shadcn.com/docs)
 - [shadcn components.json](https://ui.shadcn.com/docs/components-json)
 - [shadcn Vite installation](https://ui.shadcn.com/docs/installation/vite)
-- [SQLite appropriate uses](https://www.sqlite.org/whentouse.html)
-- [SQLite transaction semantics](https://www.sqlite.org/lang_transaction.html)
-- [SQLite numeric precision](https://www.sqlite.org/floatingpoint.html)
-- [SQLite foreign key pragma](https://www.sqlite.org/pragma.html#pragma_foreign_keys)
-- [SQLite backup API](https://www.sqlite.org/backup.html)
 
 Struktur folder, skema domain, kebijakan biaya, matriks role, dan workflow CLBK TOKE merupakan keputusan rancangan dalam PRD ini. Dokumentasi library menjadi dasar integrasi teknis, bukan sumber aturan bisnis usaha.

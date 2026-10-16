@@ -32,10 +32,8 @@ class WriteTransaction
             try {
                 // A single MySQL row lock preserves the serialized business-write boundary.
                 return $connection->transaction(function ($transaction) use ($callback, &$callbackCompleted) {
-                    if ($transaction->getDriverName() === 'mysql') {
-                        if ($transaction->table('database_write_locks')->where('id', 1)->lockForUpdate()->first() === null) {
-                            throw new LogicException('Mutex transaksi MySQL belum diinisialisasi. Jalankan migrasi.');
-                        }
+                    if ($transaction->table('database_write_locks')->where('id', 1)->lockForUpdate()->first() === null) {
+                        throw new LogicException('Mutex transaksi MySQL belum diinisialisasi. Jalankan migrasi.');
                     }
                     $result = $callback($transaction);
                     $callbackCompleted = true;
@@ -54,9 +52,7 @@ class WriteTransaction
                     $driverCode = $exception->getPrevious()->errorInfo[1] ?? $driverCode;
                 }
 
-                $retryable = $connection->getDriverName() === 'mysql'
-                    ? in_array((int) $driverCode, [1205, 1213], true)
-                    : in_array(is_numeric($driverCode) ? ((int) $driverCode & 0xFF) : null, [5, 6], true);
+                $retryable = in_array((int) $driverCode, [1205, 1213], true);
                 if (! $retryable) {
                     throw $exception;
                 }

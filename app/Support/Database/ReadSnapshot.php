@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 
 class ReadSnapshot
 {
-    // PDO begins a deferred SQLite read transaction, without reserving the writer lock.
+    // REPEATABLE READ keeps reports consistent without locking business writers.
     public function run(callable $read, ?string $connectionName = null): mixed
     {
         $pdo = DB::connection($connectionName)->getPdo();

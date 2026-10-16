@@ -10,11 +10,14 @@ use App\Models\CustomerPayment;
 use App\Models\User;
 use App\Queries\PaymentBalances;
 use App\Services\AuditService;
+use App\Services\BackupSnapshot;
 use App\Services\CashLedger;
+use App\Services\MySqlBackup;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
 
 trait FinanceIntegrityCases
@@ -115,18 +118,19 @@ trait FinanceIntegrityCases
         $second = $this->weigh('1000', Customer::create(['code' => 'K2', 'name' => 'Konsumen Kedua', 'is_active' => true]));
         $this->capital(3000000);
         $otherCashier = User::factory()->cashier()->create();
+        $path = sys_get_temp_dir().'/clbk-payment-'.Str::uuid().'.jsonl';
+        app(MySqlBackup::class)->export($path);
+        $state = app(BackupSnapshot::class)->inspect($path);
+        $this->beforeApplicationDestroyed(fn () => is_file($path) && unlink($path));
         foreach ([[$first, $first], [$first, $second]] as $targets) {
-            $path = tempnam(sys_get_temp_dir(), 'clbk-payment-');
-            unlink($path);
-            DB::statement('VACUUM INTO ?', [$path]);
-            $pdo = new \PDO('sqlite:'.$path);
-            $pdo->exec('PRAGMA journal_mode=WAL');
-            $pdo = null;
+            $this->app->maintenanceMode()->activate(['time' => time()]);
+            app(MySqlBackup::class)->restore($path, $state);
+            $this->app->maintenanceMode()->deactivate();
             $processes = [];
             foreach ($targets as $index => $target) {
                 $actor = $index === 0 ? $this->cashier : $otherCashier;
                 $payload = $this->payment($target, ['amount_idr' => 3000000]);
-                $processes[] = new Process([PHP_BINARY, base_path('tests/Support/post-payment-process.php'), (string) $actor->id, json_encode($payload, JSON_THROW_ON_ERROR)], base_path(), ['APP_ENV' => 'testing', 'DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => $path]);
+                $processes[] = new Process([PHP_BINARY, base_path('tests/Support/post-payment-process.php'), (string) $actor->id, json_encode($payload, JSON_THROW_ON_ERROR)], base_path(), $this->databaseEnvironment());
             }
             try {
                 foreach ($processes as $process) {
@@ -139,16 +143,16 @@ trait FinanceIntegrityCases
                 $outputs = array_map(fn ($process) => json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR), $processes);
                 $this->assertCount(1, array_filter($outputs, fn ($o) => isset($o['id'])));
                 $this->assertCount(1, array_filter($outputs, fn ($o) => isset($o['errors'])));
-                $pdo = new \PDO('sqlite:'.$path);
+                $pdo = DB::connection()->getPdo();
                 $this->assertSame(1, (int) $pdo->query('SELECT COUNT(*) FROM customer_payments')->fetchColumn());
                 $this->assertSame(1, (int) $pdo->query('SELECT COUNT(*) FROM customer_payment_allocations')->fetchColumn());
                 $this->assertSame(0, (int) $pdo->query("SELECT SUM(CASE direction WHEN 'in' THEN amount_idr ELSE -amount_idr END) FROM cash_entries")->fetchColumn());
-                $this->assertSame([], $pdo->query('PRAGMA foreign_key_check')->fetchAll());
+                $this->assertForeignKeysAreValid();
                 $pdo = null;
             } finally {
-                foreach (['', '-wal', '-shm'] as $suffix) {
-                    if (is_file($path.$suffix)) {
-                        unlink($path.$suffix);
+                foreach ($processes as $process) {
+                    if ($process->isRunning()) {
+                        $process->stop();
                     }
                 }
             }

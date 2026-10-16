@@ -4,13 +4,13 @@ Perbaikan audit mencakup origin tautan reset yang tetap, trusted hosts, autentik
 
 ## Konfigurasi produksi
 
-Gunakan `.env.production.example` sebagai acuan; jangan menyalin nilai contoh domain/SMTP tanpa menyesuaikannya. APP_KEY dibuat pada server dan harus dipertahankan saat deployment berikutnya. Tidak ada secret produksi di template.
+Gunakan `.env.example` sebagai dasar konfigurasi; jangan menyalin nilai contoh domain/SMTP tanpa menyesuaikannya. APP_KEY dibuat pada server dan harus dipertahankan saat deployment berikutnya. Tidak ada secret produksi di template.
 
 - `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` berupa origin HTTPS canonical tanpa path/kredensial/query/fragment.
-- Cookie wajib `SESSION_SECURE_COOKIE=true`, `SESSION_HTTP_ONLY=true`, dan SameSite `lax` atau `strict`. Template juga mengaktifkan enkripsi payload session.
+- Cookie wajib `SESSION_SECURE_COOKIE=true`, `SESSION_HTTP_ONLY=true`, dan SameSite `lax` atau `strict`. Aktifkan enkripsi payload melalui `SESSION_ENCRYPT=true` saat menyiapkan produksi.
 - Isi SMTP sebenarnya termasuk alamat pengirim. Mailer `log`, `array`, serta mailer gabungan yang mengarah ke keduanya ditolak saat boot produksi agar token reset tidak tercatat sebagai email di log.
 - Log produksi memakai level warning dan rotasi harian. Pelaporan error database hanya menulis tipe exception, SQLSTATE, dan kode driver; pesan, SQL, binding, serta rantai exception tidak disertakan. Log development lama tidak dihapus oleh perubahan ini. Batasi akses dan kelola retensinya sebelum menyalin server ke produksi.
-- Web root harus menunjuk ke `public/`; `.env`, SQLite, dan `storage/app/private` tidak boleh dapat diunduh melalui web server.
+- Web root harus menunjuk ke `public/`; `.env` dan `storage/app/private` tidak boleh dapat diunduh melalui web server.
 
 Ketika konfigurasi produksi ditolak, debug dimatikan terlebih dahulu sehingga exception boot tidak mengungkap trace. Konfigurasi yang berubah perlu diikuti pembaruan cache konfigurasi sesuai prosedur deployment.
 
@@ -29,4 +29,4 @@ Respons aplikasi, termasuk error, memakai X-Frame-Options DENY, CSP `frame-ances
 - Upload bukti penjualan/keuangan berbagi batas sepuluh request per menit per akun.
 - `PROOFS_MAX_PER_DOCUMENT=5` membatasi jumlah bukti per dokumen; `PROOFS_MAX_BYTES_PER_USER=262144000` membatasi 250 MiB per pengunggah; `PROOFS_MAX_BYTES_TOTAL=2147483648` membatasi total metadata bukti ke 2 GiB. Nilai harus positif. Ukuran setiap file tetap maksimal 10 MiB dan MIME PDF/JPG/JPEG/PNG tetap divalidasi.
 
-Kuota diperiksa sebelum penulisan file dan kembali di bawah write lock database. Batas tersebut mengukur file yang tercatat sebagai bukti, bukan seluruh pemakaian filesystem. Batasi volume penyimpanan, direktori temporary upload PHP/web server, backup, dan log secara terpisah agar request paralel atau pertumbuhan file lain tidak memenuhi disk SQLite. Sediakan pemantauan kapasitas dan prosedur pengarsipan bukti yang mempertahankan histori audit.
+Kuota diperiksa sebelum penulisan file dan kembali di bawah write lock database. Batas tersebut mengukur file yang tercatat sebagai bukti, bukan seluruh pemakaian filesystem. Batasi volume penyimpanan, direktori temporary upload PHP/web server, backup, dan log secara terpisah agar request paralel atau pertumbuhan file lain tidak memenuhi disk aplikasi. Sediakan pemantauan kapasitas dan prosedur pengarsipan bukti yang mempertahankan histori audit.

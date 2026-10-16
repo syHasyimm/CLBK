@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -32,12 +31,12 @@ final class BackupArchive
                 throw new RuntimeException('Tanda tangan cadangan tidak cocok. Periksa APP_KEY dan keaslian arsip.');
             }
             $manifest = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
-            if (($manifest['format'] ?? null) !== 1 || ! isset($manifest['entries']['database.sqlite'], $manifest['state'])
+            if (($manifest['format'] ?? null) !== 2 || ($manifest['database_driver'] ?? null) !== 'mysql' || ! isset($manifest['entries']['database.jsonl'], $manifest['state'])
                 || $zip->numFiles !== count($manifest['entries']) + 2) {
                 throw new RuntimeException('Struktur cadangan tidak dikenali.');
             }
             foreach ($manifest['entries'] as $entry => $metadata) {
-                if ($entry !== 'database.sqlite') {
+                if ($entry !== 'database.jsonl') {
                     if (! str_starts_with($entry, 'proofs/')) {
                         throw new RuntimeException('Entri cadangan tidak diizinkan.');
                     }
@@ -60,7 +59,7 @@ final class BackupArchive
                     throw new RuntimeException('Checksum atau ukuran isi cadangan tidak cocok.');
                 }
             }
-            if ($snapshot->inspect($stage.'/database.sqlite') !== $manifest['state']) {
+            if ($snapshot->inspect($stage.'/database.jsonl') !== $manifest['state']) {
                 throw new RuntimeException('Snapshot cadangan tidak cocok dengan manifest.');
             }
             foreach ($manifest['state']['proofs'] as $proof) {
@@ -96,9 +95,7 @@ final class BackupArchive
         $files = collect(File::files(database_path('migrations')))->sortBy(fn ($file) => $file->getFilename());
 
         $fingerprints = $files->map(fn ($file) => $file->getFilename().':'.hash_file('sha256', $file->getPathname()))->all();
-        if (DB::connection()->getDriverName() === 'mysql') {
-            $fingerprints[] = 'mysql-schema.sql:'.hash_file('sha256', database_path('schema/mysql-schema.sql'));
-        }
+        $fingerprints[] = 'clbk.sql:'.hash_file('sha256', database_path('schema/clbk.sql'));
 
         return hash('sha256', implode("\n", $fingerprints));
     }

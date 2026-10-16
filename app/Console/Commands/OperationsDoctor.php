@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Services\BackupService;
 use App\Support\Database\MySqlDatabase;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 final class OperationsDoctor extends Command
 {
@@ -18,17 +18,12 @@ final class OperationsDoctor extends Command
         $checks = [];
         $errorMessage = null;
         try {
-            if (DB::connection()->getDriverName() === 'mysql') {
-                $database = app(MySqlDatabase::class);
-                $database->assertVersion();
-                $checks['mysql_integrity'] = $database->integrity();
-                $checks['mysql_business_guards'] = $database->guardsPresent();
-                $checks['private_disk_space'] = disk_free_space(config('filesystems.disks.local.root')) >= (int) config('backups.minimum_free_bytes');
-            } else {
-                $checks['sqlite_integrity'] = DB::selectOne('PRAGMA quick_check')->quick_check === 'ok';
-                $checks['sqlite_foreign_keys'] = DB::select('PRAGMA foreign_key_check') === [];
-                $checks['data_disk_space'] = disk_free_space(dirname(DB::connection()->getDatabaseName())) >= (int) config('backups.minimum_free_bytes');
-            }
+            $database = app(MySqlDatabase::class);
+            $database->assertVersion();
+            $checks['mysql_integrity'] = $database->integrity();
+            $checks['mysql_business_guards'] = $database->guardsPresent();
+            File::ensureDirectoryExists(config('filesystems.disks.local.root'), 0700);
+            $checks['private_disk_space'] = disk_free_space(config('filesystems.disks.local.root')) >= (int) config('backups.minimum_free_bytes');
             $files = $backups->listing();
             $checks['backup_integrity'] = false;
             $checks['backup_within_24_hours'] = false;

@@ -23,7 +23,6 @@ use Tests\Concerns\DatabaseMigrations;
 use Tests\Concerns\FinanceTest\CustomerPaymentsCases;
 use Tests\Concerns\FinanceTest\ExpensesAndCapitalCases;
 use Tests\Concerns\FinanceTest\FinanceIntegrityCases;
-use Tests\Concerns\FinanceTest\FinanceMigrationsCases;
 use Tests\Concerns\FinanceTest\PayrollPaymentsCases;
 use Tests\Concerns\FinanceTest\SaleReceiptsCases;
 use Tests\Concerns\LegacyCustomerPayments;
@@ -36,7 +35,6 @@ class FinanceTest extends TestCase
     use DatabaseMigrations;
     use ExpensesAndCapitalCases;
     use FinanceIntegrityCases;
-    use FinanceMigrationsCases;
     use LegacyCustomerPayments;
     use LegacyWorkflowRoutes;
     use PayrollPaymentsCases;

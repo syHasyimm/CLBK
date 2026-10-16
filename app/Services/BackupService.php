@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
-use SQLite3;
 use Throwable;
 use ZipArchive;
 
@@ -63,28 +62,20 @@ final class BackupService
         $zip = new ZipArchive;
         $opened = false;
         try {
-            $mysql = DB::connection()->getDriverName() === 'mysql';
-            if (! $mysql) {
-                $this->databasePath();
-            }
             if (DB::connection()->transactionLevel() !== 0 || DB::connection()->getPdo()->inTransaction()) {
                 throw new RuntimeException('Backup harus dimulai di luar transaksi database.');
             }
             if (disk_free_space($root) < max(0, (int) config('backups.minimum_free_bytes'))) {
                 throw new RuntimeException('Ruang disk cadangan tidak mencukupi.');
             }
-            if ($mysql) {
-                app(MySqlBackup::class)->export($stage.'/database.sqlite');
-            } else {
-                DB::statement('VACUUM INTO ?', [$stage.'/database.sqlite']);
-            }
-            $state = $this->snapshot->inspect($stage.'/database.sqlite');
-            $entries = ['database.sqlite' => ['bytes' => filesize($stage.'/database.sqlite'), 'sha256' => hash_file('sha256', $stage.'/database.sqlite')]];
+            app(MySqlBackup::class)->export($stage.'/database.jsonl');
+            $state = $this->snapshot->inspect($stage.'/database.jsonl');
+            $entries = ['database.jsonl' => ['bytes' => filesize($stage.'/database.jsonl'), 'sha256' => hash_file('sha256', $stage.'/database.jsonl')]];
             if ($zip->open($stage.'/archive.zip', ZipArchive::CREATE | ZipArchive::EXCL) !== true) {
                 throw new RuntimeException('Arsip cadangan tidak dapat dibuat.');
             }
             $opened = true;
-            $zip->addFile($stage.'/database.sqlite', 'database.sqlite');
+            $zip->addFile($stage.'/database.jsonl', 'database.jsonl');
             foreach ($state['proofs'] as $proof) {
                 $relative = app(BackupArchive::class)->proofPath($proof['storage_path']);
                 $source = $this->privateFile($relative);
@@ -95,7 +86,7 @@ final class BackupService
                 $entries[$entry] = ['bytes' => filesize($source), 'sha256' => hash_file('sha256', $source)];
                 $zip->addFile($source, $entry);
             }
-            $manifest = ['format' => 1, 'database_driver' => DB::connection()->getDriverName(), 'id' => $id, 'created_at' => gmdate('c'), 'reason' => $reason,
+            $manifest = ['format' => 2, 'database_driver' => 'mysql', 'id' => $id, 'created_at' => gmdate('c'), 'reason' => $reason,
                 'key_fingerprint' => hash('sha256', app(BackupArchive::class)->key()), 'migration_fingerprint' => app(BackupArchive::class)->migrationFingerprint(),
                 'entries' => $entries, 'state' => $state];
             $json = json_encode($manifest, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
@@ -153,15 +144,11 @@ final class BackupService
                 if ($manifest['state']['migrations'] !== $expected || ($manifest['migration_fingerprint'] ?? '') !== app(BackupArchive::class)->migrationFingerprint()) {
                     throw new RuntimeException('Versi migrasi cadangan berbeda. Gunakan versi aplikasi yang cocok sebelum restore.');
                 }
-                $mysql = DB::connection()->getDriverName() === 'mysql';
-                if (($manifest['database_driver'] ?? 'sqlite') !== DB::connection()->getDriverName()) {
+                if (($manifest['database_driver'] ?? '') !== 'mysql') {
                     throw new RuntimeException('Driver cadangan berbeda dari database tujuan. Restore harus memakai engine database sumber yang sama.');
                 }
-                $destination = $mysql ? null : $this->databasePath();
-                if ($mysql && $newServer) {
+                if ($newServer) {
                     app(MySqlBackup::class)->assertEmpty();
-                } elseif ($newServer && is_file($destination) && filesize($destination) > 0) {
-                    throw new RuntimeException('--new-server hanya untuk database tujuan yang belum ada atau kosong.');
                 }
                 if (! $newServer) {
                     $safety = $this->createUnlocked('pre-restore');
@@ -182,24 +169,7 @@ final class BackupService
                         throw new RuntimeException('Bukti tujuan tidak dapat diganti.');
                     }
                 }
-                if ($mysql) {
-                    $actual = app(MySqlBackup::class)->restore($stage.'/database.sqlite', $manifest['state']);
-                } else {
-                    DB::purge();
-                    File::ensureDirectoryExists(dirname($destination), 0700);
-                    $source = new SQLite3($stage.'/database.sqlite', SQLITE3_OPEN_READONLY);
-                    $target = new SQLite3($destination, SQLITE3_OPEN_READWRITE | SQLITE3_OPEN_CREATE);
-                    $target->busyTimeout(5000);
-                    try {
-                        if (! $source->backup($target)) {
-                            throw new RuntimeException('SQLite Backup API gagal memulihkan database.');
-                        }
-                    } finally {
-                        $target->close();
-                        $source->close();
-                    }
-                    $actual = $this->snapshot->inspect($destination);
-                }
+                $actual = app(MySqlBackup::class)->restore($stage.'/database.jsonl', $manifest['state']);
                 if ($actual !== $manifest['state']) {
                     throw new RuntimeException('Rekonsiliasi setelah restore gagal; aplikasi tetap maintenance.');
                 }
@@ -233,17 +203,6 @@ final class BackupService
         });
     }
 
-    private function databasePath(): string
-    {
-        $connection = DB::connection();
-        $path = $connection->getDatabaseName();
-        if ($connection->getDriverName() !== 'sqlite' || $path === ':memory:' || str_starts_with($path, 'file:')) {
-            throw new RuntimeException('Operasi cadangan memerlukan SQLite pada file disk lokal.');
-        }
-
-        return $path;
-    }
-
     private function root(): string
     {
         $root = (string) config('backups.path');
@@ -271,12 +230,7 @@ final class BackupService
             throw new RuntimeException('Direktori cadangan harus terpisah dari penyimpanan privat aplikasi.');
         }
         if (app()->isProduction() && config('backups.require_separate_disk', true)) {
-            if (DB::connection()->getDriverName() === 'mysql') {
-                $dataDirectory = $privateDirectory;
-            } else {
-                $database = $this->databasePath();
-                $dataDirectory = is_dir(dirname($database)) ? dirname($database) : database_path();
-            }
+            $dataDirectory = $privateDirectory;
             $sameVolume = PHP_OS_FAMILY === 'Windows'
                 ? strtolower(substr($root, 0, 2)) === strtolower(substr(realpath($dataDirectory), 0, 2))
                 : stat($root)['dev'] === stat($dataDirectory)['dev'];

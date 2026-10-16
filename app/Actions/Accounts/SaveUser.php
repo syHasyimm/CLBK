@@ -61,7 +61,7 @@ class SaveUser
                 return $user;
             });
         } catch (QueryException $exception) {
-            if (str_contains($exception->getMessage(), 'UNIQUE constraint failed')) {
+            if ((int) ($exception->errorInfo[1] ?? 0) === 1062) {
                 throw ValidationException::withMessages(['email' => 'Email sudah digunakan.']);
             }
             throw $exception;

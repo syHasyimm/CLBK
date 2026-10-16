@@ -41,7 +41,7 @@ class SaveMasterData
                 return $record;
             });
         } catch (QueryException $exception) {
-            if (str_contains($exception->getMessage(), 'UNIQUE constraint failed')) {
+            if ((int) ($exception->errorInfo[1] ?? 0) === 1062) {
                 throw ValidationException::withMessages(['operation' => 'Data sudah digunakan. Muat ulang halaman dan periksa kembali isian Anda.']);
             }
             throw $exception;

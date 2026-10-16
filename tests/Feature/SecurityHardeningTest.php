@@ -186,7 +186,7 @@ class SecurityHardeningTest extends TestCase
     {
         $this->productionConfig();
         Log::spy();
-        $query = new QueryException('sqlite', 'insert into users (email) values (?)',
+        $query = new QueryException('mysql', 'insert into users (email) values (?)',
             ['private@example.test'], new PDOException('driver message with private@example.test'));
 
         report(new WriteConflict('Server busy.', previous: $query));

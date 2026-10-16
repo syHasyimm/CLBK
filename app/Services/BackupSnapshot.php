@@ -2,50 +2,104 @@
 
 namespace App\Services;
 
-use PDO;
-use RuntimeException;
+use App\Support\Database\ReadSnapshot;
 
 final class BackupSnapshot
 {
     private const RUNTIME = ['sessions', 'password_reset_tokens', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'database_write_locks'];
 
-    public function inspect(string $file): array
+    public function inspect(?string $file = null): array
     {
-        $pdo = new PDO('sqlite:'.$file, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $pdo->exec('PRAGMA query_only=ON');
-        if ($pdo->query('PRAGMA integrity_check')->fetchColumn() !== 'ok' || $pdo->query('PRAGMA foreign_key_check')->fetchAll() !== []) {
-            throw new RuntimeException('Pemeriksaan integritas atau foreign key database gagal.');
+        if ($file === null) {
+            return app(ReadSnapshot::class)->run(fn () => $this->summarize(app(MySqlBackupData::class)->live()));
         }
-        $tables = [];
-        foreach ($pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")->fetchAll(PDO::FETCH_COLUMN) as $table) {
-            if (in_array($table, self::RUNTIME, true)) {
+
+        return $this->summarize(app(MySqlBackupData::class)->read($file));
+    }
+
+    private function summarize(iterable $records): array
+    {
+        $tables = $proofs = $migrations = $posted = $allocations = [];
+        $metrics = ['cash_idr' => 0, 'customer_debt_idr' => 0, 'payroll_debt_idr' => 0, 'receivable_idr' => 0, 'historical_stock_grams' => 0];
+        $table = null;
+        $hash = null;
+        $columns = [];
+        $count = 0;
+        $finish = function () use (&$tables, &$table, &$hash, &$count): void {
+            if ($hash !== null) {
+                $tables[$table] = ['count' => $count, 'sha256' => hash_final($hash)];
+            }
+        };
+        foreach ($records as $record) {
+            if (isset($record['table'])) {
+                $finish();
+                $table = $record['table'];
+                $columns = $record['columns'];
+                $hash = in_array($table, self::RUNTIME, true) ? null : hash_init('sha256');
+                $count = 0;
+
                 continue;
             }
-            $quoted = '"'.str_replace('"', '""', $table).'"';
-            $columns = $pdo->query('PRAGMA table_info('.$quoted.')')->fetchAll(PDO::FETCH_ASSOC);
-            $order = implode(',', array_map(fn ($column) => '"'.str_replace('"', '""', $column['name']).'"', $columns));
-            $hash = hash_init('sha256');
-            $count = 0;
-            foreach ($pdo->query('SELECT * FROM '.$quoted.' ORDER BY '.$order, PDO::FETCH_ASSOC) as $row) {
-                hash_update($hash, json_encode($row, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE)."\n");
+            if (! isset($record['row'])) {
+                continue;
+            }
+            $row = array_combine($columns, array_map(fn ($cell) => $cell === null ? null : base64_decode($cell, true), $record['row']));
+            if ($hash !== null) {
+                hash_update($hash, json_encode($record['row'], JSON_THROW_ON_ERROR)."\n");
                 $count++;
             }
-            $tables[$table] = ['count' => $count, 'sha256' => hash_final($hash)];
+            switch ($table) {
+                case 'cash_entries':
+                    $metrics['cash_idr'] += ($row['direction'] === 'in' ? 1 : -1) * (int) $row['amount_idr'];
+                    break;
+                case 'weighings':
+                    if ($row['status'] === 'posted') {
+                        $posted['weighings'][$row['id']] = true;
+                        $metrics['customer_debt_idr'] += (int) $row['total_purchase_idr'];
+                    }
+                    break;
+                case 'customer_payments':
+                case 'payroll_payments':
+                    if ($row['status'] === 'posted') {
+                        $posted[$table][$row['id']] = true;
+                    }
+                    break;
+                case 'weighing_loaders':
+                case 'customer_payment_allocations':
+                case 'payroll_payment_allocations':
+                    [$parent, $foreignKey, $amount] = match ($table) {
+                        'weighing_loaders' => ['weighings', 'weighing_id', 'share_amount_idr'],
+                        'customer_payment_allocations' => ['customer_payments', 'customer_payment_id', 'amount_idr'],
+                        default => ['payroll_payments', 'payroll_payment_id', 'amount_idr'],
+                    };
+                    $allocations[$parent][$row[$foreignKey]] = ($allocations[$parent][$row[$foreignKey]] ?? 0) + (int) $row[$amount];
+                    break;
+                case 'factory_sales':
+                case 'sort_sales':
+                case 'sale_receipts':
+                    if ($row['status'] === 'posted') {
+                        $metrics['receivable_idr'] += $table === 'sale_receipts' ? -(int) $row['amount_idr'] : (int) $row['revenue_idr'];
+                    }
+                    break;
+                case 'sort_stock_movements':
+                    $metrics['historical_stock_grams'] += (int) $row['quantity_delta_grams'];
+                    break;
+                case 'attachments':
+                    $proofs[] = ['storage_path' => $row['storage_path'], 'size_bytes' => (int) $row['size_bytes']];
+                    break;
+                case 'migrations':
+                    $migrations[] = $row['migration'];
+                    break;
+            }
         }
-        $sum = fn ($sql): int => (int) $pdo->query($sql)->fetchColumn();
-        $metrics = [
-            'cash_idr' => $sum("SELECT COALESCE(SUM(CASE direction WHEN 'in' THEN amount_idr ELSE -amount_idr END),0) FROM cash_entries"),
-            'customer_debt_idr' => $sum("SELECT COALESCE(SUM(total_purchase_idr),0) FROM weighings WHERE status='posted'")
-                - $sum("SELECT COALESCE(SUM(a.amount_idr),0) FROM customer_payment_allocations a JOIN customer_payments p ON p.id=a.customer_payment_id WHERE p.status='posted'"),
-            'payroll_debt_idr' => $sum("SELECT COALESCE(SUM(l.share_amount_idr),0) FROM weighing_loaders l JOIN weighings w ON w.id=l.weighing_id WHERE w.status='posted'")
-                - $sum("SELECT COALESCE(SUM(a.amount_idr),0) FROM payroll_payment_allocations a JOIN payroll_payments p ON p.id=a.payroll_payment_id WHERE p.status='posted'"),
-            'receivable_idr' => $sum("SELECT COALESCE(SUM(revenue_idr),0) FROM factory_sales WHERE status='posted'")
-                + $sum("SELECT COALESCE(SUM(revenue_idr),0) FROM sort_sales WHERE status='posted'")
-                - $sum("SELECT COALESCE(SUM(amount_idr),0) FROM sale_receipts WHERE status='posted'"),
-            'historical_stock_grams' => $sum('SELECT COALESCE(SUM(quantity_delta_grams),0) FROM sort_stock_movements'),
-        ];
-        $proofs = $pdo->query('SELECT storage_path, size_bytes FROM attachments ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
-        $migrations = $pdo->query('SELECT migration FROM migrations ORDER BY migration')->fetchAll(PDO::FETCH_COLUMN);
+        $finish();
+        foreach (['weighings', 'customer_payments', 'payroll_payments'] as $parent) {
+            $amount = array_sum(array_intersect_key($allocations[$parent] ?? [], $posted[$parent] ?? []));
+            $metric = $parent === 'customer_payments' ? 'customer_debt_idr' : 'payroll_debt_idr';
+            $metrics[$metric] += $parent === 'weighings' ? $amount : -$amount;
+        }
+        ksort($tables);
+        sort($migrations);
 
         return ['tables' => $tables, 'metrics' => $metrics, 'proofs' => $proofs, 'migrations' => $migrations];
     }

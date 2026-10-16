@@ -23,7 +23,6 @@ use Illuminate\Support\Str;
 use Tests\Concerns\DatabaseMigrations;
 use Tests\Concerns\LegacyWorkflowRoutes;
 use Tests\Concerns\SalesAndInventoryTest\FactorySaleEntryCases;
-use Tests\Concerns\SalesAndInventoryTest\InventoryMigrationsCases;
 use Tests\Concerns\SalesAndInventoryTest\SaleAccessCases;
 use Tests\Concerns\SalesAndInventoryTest\SaleIntegrityCases;
 use Tests\Concerns\SalesAndInventoryTest\StockAllocationCases;
@@ -34,7 +33,6 @@ class SalesAndInventoryTest extends TestCase
 {
     use DatabaseMigrations;
     use FactorySaleEntryCases;
-    use InventoryMigrationsCases;
     use LegacyWorkflowRoutes;
     use SaleAccessCases;
     use SaleIntegrityCases;

@@ -25,7 +25,7 @@ class DeleteMasterData
                 $this->audit->record($actor, 'deleted', $record, $before, null);
             });
         } catch (QueryException $exception) {
-            if (str_contains($exception->getMessage(), 'FOREIGN KEY constraint failed')) {
+            if ((int) ($exception->errorInfo[1] ?? 0) === 1451) {
                 throw ValidationException::withMessages(['operation' => 'Data sudah digunakan. Nonaktifkan data untuk mempertahankan riwayatnya.']);
             }
             throw $exception;

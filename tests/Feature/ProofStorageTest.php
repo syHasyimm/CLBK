@@ -232,8 +232,8 @@ class ProofStorageTest extends TestCase
     {
         $expense = $this->expense();
         config(['proofs.max_per_document' => 1, 'proofs.max_bytes_total' => strlen(self::PDF)]);
-        $busy = new PDOException('database is locked');
-        $busy->errorInfo = ['HY000', 5, 'database is locked'];
+        $busy = new PDOException('Lock wait timeout exceeded');
+        $busy->errorInfo = ['HY000', 1205, 'Lock wait timeout exceeded'];
         $this->mock(AuditService::class)->shouldReceive('record')->twice()->andReturnUsing(function () use (&$busy) {
             if ($busy !== null) {
                 $error = $busy;
@@ -272,21 +272,15 @@ class ProofStorageTest extends TestCase
     public function test_two_upload_processes_cannot_exceed_the_global_byte_quota(): void
     {
         $expense = $this->expense();
-        $databaseFile = tempnam(sys_get_temp_dir(), 'clbk-proof-db-');
         $uploadFile = tempnam(sys_get_temp_dir(), 'clbk-proof-file-');
         $processes = [];
         try {
-            unlink($databaseFile);
-            DB::statement('VACUUM INTO ?', [$databaseFile]);
             file_put_contents($uploadFile, self::PDF);
             foreach ([$this->cashier, $this->manager] as $actor) {
                 $processes[] = new Process([
                     PHP_BINARY, base_path('tests/Support/store-proof-process.php'), (string) $actor->id,
                     (string) $expense->id, $uploadFile, $this->disk->path('concurrent'), (string) strlen(self::PDF),
-                ], base_path(), [
-                    'APP_ENV' => 'testing', 'DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => $databaseFile, 'DB_URL' => '',
-                    'CACHE_STORE' => 'array', 'SESSION_DRIVER' => 'array',
-                ]);
+                ], base_path(), $this->databaseEnvironment());
             }
             foreach ($processes as $process) {
                 $process->start();
@@ -298,21 +292,16 @@ class ProofStorageTest extends TestCase
             $outputs = array_map(fn ($process) => json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR), $processes);
             $this->assertCount(1, array_filter($outputs, fn ($output) => isset($output['stored'])));
             $this->assertCount(1, array_filter($outputs, fn ($output) => isset($output['errors']['proof'])));
-            $pdo = new \PDO('sqlite:'.$databaseFile);
+            $pdo = DB::connection()->getPdo();
             $this->assertSame(1, (int) $pdo->query('SELECT COUNT(*) FROM attachments')->fetchColumn());
             $this->assertSame(strlen(self::PDF), (int) $pdo->query('SELECT SUM(size_bytes) FROM attachments')->fetchColumn());
-            $this->assertSame([], $pdo->query('PRAGMA foreign_key_check')->fetchAll());
+            $this->assertForeignKeysAreValid();
             $pdo = null;
             $this->assertCount(1, $this->disk->allFiles('concurrent'));
         } finally {
             foreach ($processes as $process) {
                 if ($process->isRunning()) {
                     $process->stop();
-                }
-            }
-            foreach (['', '-wal', '-shm'] as $suffix) {
-                if (is_file($databaseFile.$suffix)) {
-                    unlink($databaseFile.$suffix);
                 }
             }
             if (is_file($uploadFile)) {

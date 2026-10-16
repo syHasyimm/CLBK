@@ -13,9 +13,4 @@ if (preg_match('/^APP_KEY=\s*$/m', $contents)) {
     file_put_contents($environmentPath, $contents);
 }
 
-$databaseFile = $root.'/database/database.sqlite';
-if (! is_file($databaseFile)) {
-    touch($databaseFile);
-}
-
-echo "Konfigurasi lokal siap.\n";
+echo "Konfigurasi lokal siap. Pastikan database MySQL pada DB_* sudah tersedia sebelum migrasi.\n";

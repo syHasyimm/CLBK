@@ -18,7 +18,7 @@ final class DatabaseReady extends Command
     public function handle(MySqlDatabase $database): int
     {
         if (DB::connection()->getDriverName() !== 'mysql') {
-            $this->error('Runtime produksi memerlukan DB_CONNECTION=mysql.');
+            $this->error('Aplikasi memerlukan DB_CONNECTION=mysql.');
 
             return self::FAILURE;
         }
@@ -30,7 +30,7 @@ final class DatabaseReady extends Command
             } catch (PDOException) {
                 DB::purge();
                 if (microtime(true) >= $deadline) {
-                    $this->error('MySQL belum dapat dihubungi. Periksa status resource, network, dan runtime DB_* di Coolify.');
+                    $this->error('MySQL belum dapat dihubungi. Periksa server lokal dan konfigurasi DB_* di .env.');
 
                     return self::FAILURE;
                 }
@@ -43,7 +43,7 @@ final class DatabaseReady extends Command
             $tables = $database->tables();
             if ($tables === [] || $tables === ['migrations']) {
                 Artisan::call('down');
-                $this->info('MySQL kosong: aplikasi tetap maintenance. Jalankan migrate, seed, dan bootstrap melalui Terminal Coolify.');
+                $this->info('MySQL kosong: aplikasi tetap maintenance. Jalankan migrate, seed, dan clbk:bootstrap-user.');
 
                 return self::SUCCESS;
             }

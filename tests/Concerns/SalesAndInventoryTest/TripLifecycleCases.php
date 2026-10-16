@@ -32,7 +32,7 @@ trait TripLifecycleCases
                 $attempt();
                 $this->fail('Frozen source must reject edits');
             } catch (QueryException $e) {
-                $this->assertStringContainsString('19', $e->getMessage());
+                $this->assertSame(1644, (int) $e->errorInfo[1]);
             }
         }
     }

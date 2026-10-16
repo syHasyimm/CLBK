@@ -144,13 +144,7 @@ trait StockAllocationCases
         $first = $this->draft('sort', ['sold_kg' => '60']);
         $second = $this->draft('sort', ['sold_kg' => '60']);
         $hashes = [app(Stock::class)->preview($first)['preview_hash'], app(Stock::class)->preview($second)['preview_hash']];
-        $path = tempnam(sys_get_temp_dir(), 'clbk-sort-');
-        unlink($path);
-        DB::statement('VACUUM INTO ?', [$path]);
-        $pdo = new \PDO('sqlite:'.$path);
-        $pdo->exec('PRAGMA journal_mode=WAL');
-        $pdo = null;
-        $env = ['APP_ENV' => 'testing', 'DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => $path];
+        $env = $this->databaseEnvironment();
         $processes = [];
         foreach ([$first, $second] as $index => $sale) {
             $processes[] = new Process([PHP_BINARY, base_path('tests/Support/post-sort-sale-process.php'), (string) $this->manager->id, (string) $sale->id, (string) $sale->version, $hashes[$index], (string) Str::uuid()], base_path(), $env);
@@ -165,15 +159,15 @@ trait StockAllocationCases
             $outputs = array_map(fn ($p) => json_decode($p->getOutput(), true, flags: JSON_THROW_ON_ERROR), $processes);
             $this->assertCount(1, array_filter($outputs, fn ($o) => isset($o['id'])));
             $this->assertCount(1, array_filter($outputs, fn ($o) => isset($o['errors'])));
-            $pdo = new \PDO('sqlite:'.$path);
+            $pdo = DB::connection()->getPdo();
             $this->assertSame(1, (int) $pdo->query("SELECT COUNT(*) FROM sort_sales WHERE status='posted'")->fetchColumn());
             $this->assertSame(20000, (int) $pdo->query('SELECT SUM(quantity_delta_grams) FROM sort_stock_movements')->fetchColumn());
             $this->assertSame(1, (int) $pdo->query('SELECT COUNT(*) FROM sort_sale_items')->fetchColumn());
             $pdo = null;
         } finally {
-            foreach (['', '-wal', '-shm'] as $suffix) {
-                if (is_file($path.$suffix)) {
-                    unlink($path.$suffix);
+            foreach ($processes as $process) {
+                if ($process->isRunning()) {
+                    $process->stop();
                 }
             }
         }

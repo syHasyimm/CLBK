@@ -31,13 +31,13 @@ final class MySqlDatabase
     public function assertVersion(): void
     {
         if (! preg_match('/\A8\.4\./', (string) DB::selectOne('SELECT VERSION() AS version')->version)) {
-            throw new RuntimeException('Deployment ini memerlukan MySQL 8.4.');
+            throw new RuntimeException('Aplikasi ini memerlukan MySQL 8.4.');
         }
     }
 
     public function guardsPresent(): bool
     {
-        preg_match_all('/CREATE TRIGGER `([^`]+)`/i', file_get_contents(database_path('schema/mysql-schema.sql')), $matches);
+        preg_match_all('/CREATE TRIGGER `([^`]+)`/i', file_get_contents(database_path('schema/clbk.sql')), $matches);
         $actual = DB::connection()->getPdo()->query('SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=DATABASE()')->fetchAll(PDO::FETCH_COLUMN);
 
         return $matches[1] !== [] && array_diff($matches[1], $actual) === []

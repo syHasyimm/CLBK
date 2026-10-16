@@ -27,7 +27,7 @@ Daftar pengguna menampilkan plat mobil, status nonaktif, atau Belum ditetapkan. 
 
 Migrasi `2026_10_10_000002_assign_driver_vehicle` menambah `users.assigned_vehicle_id` dengan foreign key ke mobil dan batas role Supir, serta `vehicle_assignment_version` berupa integer positif. Tidak ada penugasan otomatis dari Supir default; akun lama memerlukan penetapan oleh manajer.
 
-Cadangan konsisten SQLite dibuat di `.bootstrap/before-driver-vehicle-20261010-122719.sqlite` sebelum migrasi lokal. Folder ini diabaikan Git. Setelah pemasangan, isi asli 39 tabel tetap sama, 107 trigger usaha tetap utuh, `integrity_check` menghasilkan `ok`, dan pemeriksaan foreign key menemukan 0 pelanggaran. Satu akun supir lokal masih menunggu penetapan; tidak dibuat transaksi contoh atau perubahan penugasan pada data usaha.
+Data cadangan dan catatan verifikasi instalasi sebelumnya telah diarsipkan di luar source proyek.
 
 ## Verifikasi
 

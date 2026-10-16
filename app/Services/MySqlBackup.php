@@ -9,7 +9,6 @@ use PDO;
 use RuntimeException;
 use Throwable;
 
-/** Portable signed archives retain the existing SQLite container format, never the live database. */
 final class MySqlBackup
 {
     public function __construct(private MySqlDatabase $database) {}
@@ -17,56 +16,22 @@ final class MySqlBackup
     public function export(string $file): void
     {
         app(ReadSnapshot::class)->run(function () use ($file) {
-            $source = DB::connection()->getPdo();
-            // Preserve IDs of deleted drafts too; cached table statistics can lag inserts.
-            $source->exec('SET SESSION information_schema_stats_expiry=0');
-            $target = new PDO('sqlite:'.$file, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            $target->exec('PRAGMA foreign_keys=OFF');
-            $target->beginTransaction();
-            $keys = $this->database->foreignKeys();
-            foreach ($this->database->tables() as $table) {
-                $columns = $this->database->columns($table);
-                $definitions = [];
-                $primary = array_values(array_filter($columns, fn ($column) => $column['Key'] === 'PRI'));
-                $auto = null;
-                foreach ($columns as $column) {
-                    $type = str_contains(strtolower($column['Type']), 'int') ? 'INTEGER' : 'TEXT';
-                    $definition = $this->database->quote($column['Field']).' '.$type;
-                    if (str_contains($column['Extra'], 'auto_increment')) {
-                        $auto = $column['Field'];
-                        $definition .= ' PRIMARY KEY AUTOINCREMENT';
-                    } elseif ($column['Null'] === 'NO') {
-                        $definition .= ' NOT NULL';
-                    }
-                    $definitions[] = $definition;
-                }
-                if ($auto === null && $primary !== []) {
-                    $definitions[] = 'PRIMARY KEY ('.implode(',', array_map(fn ($column) => $this->database->quote($column['Field']), $primary)).')';
-                }
-                foreach ($keys as $key) {
-                    if ($key['TABLE_NAME'] === $table) {
-                        $definitions[] = 'FOREIGN KEY ('.$this->database->quote($key['COLUMN_NAME']).') REFERENCES '.$this->database->quote($key['REFERENCED_TABLE_NAME']).' ('.$this->database->quote($key['REFERENCED_COLUMN_NAME']).')';
-                    }
-                }
-                $quoted = $this->database->quote($table);
-                $target->exec('CREATE TABLE '.$quoted.' ('.implode(',', $definitions).')');
-                $names = implode(',', array_map(fn ($column) => $this->database->quote($column['Field']), $columns));
-                $insert = $target->prepare('INSERT INTO '.$quoted.' ('.$names.') VALUES ('.implode(',', array_fill(0, count($columns), '?')).')');
-                foreach ($source->query('SELECT '.$names.' FROM '.$quoted, PDO::FETCH_NUM) as $row) {
-                    $insert->execute($row);
-                }
-                if ($auto !== null) {
-                    $statement = $source->prepare('SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');
-                    $statement->execute([$table]);
-                    $next = (int) $statement->fetchColumn();
-                    $target->prepare('DELETE FROM sqlite_sequence WHERE name=?')->execute([$table]);
-                    $target->prepare('INSERT INTO sqlite_sequence(name,seq) VALUES (?,?)')->execute([$table, max(0, $next - 1)]);
-                }
+            if (! $this->database->integrity()) {
+                throw new RuntimeException('Integritas MySQL tidak valid; cadangan dibatalkan.');
             }
-            $target->commit();
-            $target->exec('PRAGMA foreign_keys=ON');
-            if ($target->query('PRAGMA foreign_key_check')->fetchAll() !== []) {
-                throw new RuntimeException('Snapshot MySQL gagal pemeriksaan foreign key.');
+            $stream = fopen($file, 'xb');
+            if (! $stream) {
+                throw new RuntimeException('File data cadangan tidak dapat dibuat.');
+            }
+            try {
+                foreach (app(MySqlBackupData::class)->live() as $record) {
+                    $line = json_encode($record, JSON_THROW_ON_ERROR)."\n";
+                    if (fwrite($stream, $line) !== strlen($line)) {
+                        throw new RuntimeException('Data cadangan gagal ditulis.');
+                    }
+                }
+            } finally {
+                fclose($stream);
             }
         });
     }
@@ -76,7 +41,7 @@ final class MySqlBackup
         $runtime = ['migrations', 'database_write_locks', 'sessions', 'password_reset_tokens', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs'];
         foreach (array_diff($this->database->tables(), $runtime) as $table) {
             if (DB::table($table)->exists()) {
-                throw new RuntimeException('--new-server hanya untuk database MySQL tanpa data usaha. Jalankan migrate tanpa seed sebelum restore.');
+                throw new RuntimeException('--new-server hanya untuk database tujuan MySQL tanpa data usaha. Jalankan migrate tanpa seed sebelum restore.');
             }
         }
     }
@@ -90,19 +55,23 @@ final class MySqlBackup
         if (! $this->database->guardsPresent()) {
             throw new RuntimeException('Schema/trigger MySQL belum lengkap. Jalankan migrasi pada database kosong sebelum restore.');
         }
-        $source = new PDO('sqlite:'.$file, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $source->exec('PRAGMA query_only=ON');
         $tables = $this->database->tables();
-        $sourceTables = $source->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
-        if ($tables !== $sourceTables) {
-            throw new RuntimeException('Schema cadangan berbeda dari MySQL tujuan. Gunakan cadangan MySQL dari versi aplikasi yang sama.');
-        }
-        foreach ($tables as $table) {
-            $actual = array_column($this->database->columns($table), 'Field');
-            $saved = array_column($source->query('PRAGMA table_info('.$this->database->quote($table).')')->fetchAll(PDO::FETCH_ASSOC), 'name');
-            if ($actual !== $saved) {
-                throw new RuntimeException('Kolom cadangan berbeda dari MySQL tujuan: '.$table);
+        $savedTables = [];
+        $sequences = [];
+        foreach (app(MySqlBackupData::class)->read($file) as $record) {
+            if (isset($record['table'])) {
+                $table = $record['table'];
+                if (! in_array($table, $tables, true) || array_column($this->database->columns($table), 'Field') !== $record['columns']) {
+                    throw new RuntimeException('Schema cadangan berbeda dari MySQL tujuan. Gunakan versi aplikasi yang sama.');
+                }
+                $savedTables[] = $table;
+                if ($record['auto_increment'] !== null) {
+                    $sequences[$table] = (int) $record['auto_increment'];
+                }
             }
+        }
+        if ($tables !== $savedTables) {
+            throw new RuntimeException('Tabel cadangan berbeda dari MySQL tujuan.');
         }
         $pdo = DB::connection()->getPdo();
         $triggers = [];
@@ -111,37 +80,29 @@ final class MySqlBackup
             $triggers[$trigger['Trigger']] = $definition['SQL Original Statement'];
         }
         try {
-            // DDL commits implicitly in MySQL. Drop guards before the data transaction,
-            // then restore them in finally even if the data replacement rolls back.
+            // MySQL DDL commits implicitly; guards must be restored even after rollback.
             foreach (array_keys($triggers) as $name) {
                 $pdo->exec('DROP TRIGGER '.$this->database->quote($name));
             }
             $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
             $pdo->beginTransaction();
-            foreach ($tables as $table) {
-                $quoted = $this->database->quote($table);
-                $pdo->exec('DELETE FROM '.$quoted);
-                $columns = array_column($this->database->columns($table), 'Field');
-                $names = implode(',', array_map($this->database->quote(...), $columns));
-                $insert = $pdo->prepare('INSERT INTO '.$quoted.' ('.$names.') VALUES ('.implode(',', array_fill(0, count($columns), '?')).')');
-                foreach ($source->query('SELECT '.$names.' FROM '.$quoted, PDO::FETCH_NUM) as $row) {
-                    $insert->execute($row);
+            $insert = null;
+            foreach (app(MySqlBackupData::class)->read($file) as $record) {
+                if (isset($record['table'])) {
+                    $quoted = $this->database->quote($record['table']);
+                    $pdo->exec('DELETE FROM '.$quoted);
+                    $names = implode(',', array_map($this->database->quote(...), $record['columns']));
+                    $insert = $pdo->prepare('INSERT INTO '.$quoted.' ('.$names.') VALUES ('.implode(',', array_fill(0, count($record['columns']), '?')).')');
+                } elseif (isset($record['row'])) {
+                    $insert->execute(array_map(fn ($cell) => $cell === null ? null : base64_decode($cell, true), $record['row']));
                 }
             }
             if (! $this->database->integrity()) {
                 throw new RuntimeException('Rekonsiliasi foreign key MySQL gagal.');
             }
-            $check = $file.'.restored';
-            try {
-                $this->export($check);
-                $actual = app(BackupSnapshot::class)->inspect($check);
-                if ($actual !== $expected) {
-                    throw new RuntimeException('Rekonsiliasi setelah restore MySQL gagal; aplikasi tetap maintenance.');
-                }
-            } finally {
-                if (is_file($check)) {
-                    unlink($check);
-                }
+            $actual = app(BackupSnapshot::class)->inspect();
+            if ($actual !== $expected) {
+                throw new RuntimeException('Rekonsiliasi setelah restore MySQL gagal; aplikasi tetap maintenance.');
             }
             $pdo->commit();
         } finally {
@@ -161,14 +122,11 @@ final class MySqlBackup
                 }
             }
             if ($failures !== []) {
-                throw new RuntimeException('Trigger MySQL tidak dapat dipulihkan. Tetap maintenance dan periksa izin TRIGGER sebelum membuka aplikasi.', previous: $failures[0]);
+                throw new RuntimeException('Trigger MySQL tidak dapat dipulihkan. Tetap maintenance dan periksa izin TRIGGER.', previous: $failures[0]);
             }
         }
-        foreach ($source->query('SELECT name,seq FROM sqlite_sequence', PDO::FETCH_ASSOC) as $sequence) {
-            if (in_array($sequence['name'], $tables, true)) {
-                $next = max(1, (int) $sequence['seq'] + 1);
-                $pdo->exec('ALTER TABLE '.$this->database->quote($sequence['name']).' AUTO_INCREMENT='.$next);
-            }
+        foreach ($sequences as $table => $next) {
+            $pdo->exec('ALTER TABLE '.$this->database->quote($table).' AUTO_INCREMENT='.$next);
         }
 
         return $actual;

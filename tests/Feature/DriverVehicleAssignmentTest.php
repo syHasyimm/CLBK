@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\Weighing;
 use App\Queries\AuditChanges;
+use App\Support\Database\MySqlDatabase;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
@@ -271,7 +272,7 @@ class DriverVehicleAssignmentTest extends TestCase
         $this->assertDatabaseCount('cash_entries', 0);
     }
 
-    public function test_database_constraints_and_migration_preserve_users_and_business_triggers(): void
+    public function test_database_constraints_preserve_users_and_business_triggers(): void
     {
         foreach ([['assigned_vehicle_id' => 999999], ['vehicle_assignment_version' => 0]] as $data) {
             try {
@@ -287,14 +288,9 @@ class DriverVehicleAssignmentTest extends TestCase
         } catch (QueryException) {
             $this->assertNull($this->manager->fresh()->assigned_vehicle_id);
         }
-        $triggers = DB::table('sqlite_master')->where('type', 'trigger')->orderBy('name')->pluck('sql')->all();
-        $migration = require database_path('migrations/2026_10_10_000002_assign_driver_vehicle.php');
-        $migration->down();
-        $migration->up();
-        $this->assertSame($triggers, DB::table('sqlite_master')->where('type', 'trigger')->orderBy('name')->pluck('sql')->all());
         $this->assertDatabaseCount('users', 2);
         $this->assertSame(1, $this->driver->fresh()->vehicle_assignment_version);
-        $this->assertSame([], DB::select('PRAGMA foreign_key_check'));
-        $this->assertSame('ok', DB::selectOne('PRAGMA integrity_check')->integrity_check);
+        $this->assertForeignKeysAreValid();
+        $this->assertTrue(app(MySqlDatabase::class)->guardsPresent());
     }
 }

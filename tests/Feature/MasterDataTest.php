@@ -162,8 +162,8 @@ class MasterDataTest extends TestCase
     public function test_used_master_cannot_be_deleted_but_can_be_deactivated_without_losing_history(): void
     {
         $record = Customer::query()->create(['code' => 'C001', 'name' => 'Konsumen Lama']);
-        // Fixture referensi menguji FK SQLite sebelum tabel transaksi tahap 2 dibuat.
-        DB::statement('CREATE TABLE test_customer_refs (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE RESTRICT)');
+        // Fixture referensi menguji foreign key master tanpa transaksi usaha.
+        DB::statement('CREATE TABLE test_customer_refs (id BIGINT UNSIGNED PRIMARY KEY, customer_id BIGINT UNSIGNED NOT NULL, FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT) ENGINE=InnoDB');
         DB::table('test_customer_refs')->insert(['id' => 1, 'customer_id' => $record->id]);
         try {
             $this->actingAs(User::factory()->manager()->create());
@@ -256,15 +256,15 @@ class MasterDataTest extends TestCase
         $this->assertDatabaseMissing('document_sequences', ['name' => 'master:customers']);
     }
 
-    public function test_database_rejects_invalid_boolean_and_fractional_gram_capacity(): void
+    public function test_database_rejects_invalid_boolean_and_capacity_outside_the_allowed_range(): void
     {
         $record = Vehicle::query()->create(['code' => 'M1', 'plate_number' => 'BK1AA']);
-        foreach ([['is_active' => 2], ['capacity_grams' => -1], ['capacity_grams' => 1.5]] as $values) {
+        foreach ([['is_active' => 2], ['capacity_grams' => -1], ['capacity_grams' => 1000000001]] as $values) {
             try {
                 DB::table('vehicles')->where('id', $record->id)->update($values);
                 $this->fail('Invalid value passed database constraint');
             } catch (QueryException $exception) {
-                $this->assertStringContainsString('CHECK constraint failed', $exception->getMessage());
+                $this->assertSame(3819, (int) $exception->errorInfo[1]);
             }
         }
     }

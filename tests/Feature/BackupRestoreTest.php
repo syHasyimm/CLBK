@@ -28,11 +28,14 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Tests\Concerns\DatabaseMigrations;
 use Tests\TestCase;
 use ZipArchive;
 
 class BackupRestoreTest extends TestCase
 {
+    use DatabaseMigrations;
+
     private string $directory;
 
     private User $manager;
@@ -42,9 +45,7 @@ class BackupRestoreTest extends TestCase
         parent::setUp();
         $this->directory = sys_get_temp_dir().'/clbk-backup-tests-'.Str::uuid();
         File::ensureDirectoryExists($this->directory);
-        touch($this->directory.'/live.sqlite');
-        config(['database.connections.sqlite.database' => $this->directory.'/live.sqlite',
-            'backups.path' => $this->directory.'/backups', 'backups.minimum_free_bytes' => 0, 'backups.require_separate_disk' => true,
+        config(['backups.path' => $this->directory.'/backups', 'backups.minimum_free_bytes' => 0, 'backups.require_separate_disk' => true,
             'filesystems.disks.local.root' => $this->directory.'/private',
             'app.maintenance.driver' => 'cache', 'app.maintenance.store' => 'array', 'session.driver' => 'database']);
         DB::purge();
@@ -81,7 +82,7 @@ class BackupRestoreTest extends TestCase
         return $path;
     }
 
-    public function test_backup_includes_wal_commits_database_constraints_and_private_proof(): void
+    public function test_backup_includes_committed_mysql_data_and_private_proof(): void
     {
         $path = $this->proof();
         $service = app(BackupService::class);
@@ -142,7 +143,7 @@ class BackupRestoreTest extends TestCase
         $archive = $service->path($backup['id']);
         $zip = new ZipArchive;
         $zip->open($archive);
-        $zip->addFromString('database.sqlite', 'tampered database');
+        $zip->addFromString('database.jsonl', 'tampered database');
         $zip->close();
         $this->app->maintenanceMode()->activate(['time' => time()]);
         try {
@@ -184,9 +185,9 @@ class BackupRestoreTest extends TestCase
     public function test_command_verifies_without_modifying_the_live_database(): void
     {
         $backup = app(BackupService::class)->create();
-        $before = app(BackupSnapshot::class)->inspect($this->directory.'/live.sqlite');
+        $before = app(BackupSnapshot::class)->inspect();
         $this->artisan('clbk:restore', ['archive' => app(BackupService::class)->path($backup['id']), '--verify-only' => true])->assertSuccessful();
-        $this->assertSame($before, app(BackupSnapshot::class)->inspect($this->directory.'/live.sqlite'));
+        $this->assertSame($before, app(BackupSnapshot::class)->inspect());
     }
 
     public function test_restore_on_new_machine_restores_proofs_and_refuses_nonempty_database(): void
@@ -196,8 +197,8 @@ class BackupRestoreTest extends TestCase
         $backup = $service->create();
         $archive = $service->path($backup['id']);
         DB::purge();
-        config(['database.connections.sqlite.database' => $this->directory.'/replacement.sqlite',
-            'filesystems.disks.local.root' => $this->directory.'/replacement-proofs']);
+        $this->artisan('migrate:fresh', ['--force' => true])->assertSuccessful();
+        config(['filesystems.disks.local.root' => $this->directory.'/replacement-proofs']);
         Storage::forgetDisk('local');
         $this->app->maintenanceMode()->activate(['time' => time()]);
         $result = $service->restore($archive, true);
@@ -297,7 +298,7 @@ class BackupRestoreTest extends TestCase
         $backup = $service->create();
         $archive = $service->path($backup['id']);
         DB::purge();
-        config(['database.connections.sqlite.database' => $this->directory.'/old-replacement.sqlite']);
+        $this->artisan('migrate:fresh', ['--force' => true])->assertSuccessful();
         $this->app->maintenanceMode()->activate(['time' => time()]);
         $restored = $service->restore($archive, true);
         $this->assertSame(10000, $restored['state']['metrics']['historical_stock_grams']);
@@ -390,7 +391,7 @@ class BackupRestoreTest extends TestCase
 
             return $manifest;
         });
-        $before = app(BackupSnapshot::class)->inspect($this->directory.'/live.sqlite');
+        $before = app(BackupSnapshot::class)->inspect();
         $this->app->maintenanceMode()->activate(['time' => time()]);
         try {
             $service->restore($archive);
@@ -398,7 +399,7 @@ class BackupRestoreTest extends TestCase
         } catch (RuntimeException $error) {
             $this->assertStringContainsString('Versi migrasi', $error->getMessage());
         }
-        $this->assertSame($before, app(BackupSnapshot::class)->inspect($this->directory.'/live.sqlite'));
+        $this->assertSame($before, app(BackupSnapshot::class)->inspect());
     }
 
     public function test_doctor_reports_missing_and_corrupt_backups_as_machine_readable_json(): void

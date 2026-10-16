@@ -54,10 +54,10 @@ trait SaleIntegrityCases
                 $attempt();
                 $this->fail('Expected constraint');
             } catch (QueryException $e) {
-                $this->assertStringContainsString('19', $e->getMessage());
+                $this->assertContains((int) $e->errorInfo[1], [1644, 1451]);
             }
         }
-        $this->assertSame([], DB::select('PRAGMA foreign_key_check'));
+        $this->assertForeignKeysAreValid();
     }
 
     public function test_private_proofs_validate_content_size_and_authorized_download(): void
