@@ -283,12 +283,12 @@ Isi pengaturan berikut. Nama menu dapat sedikit berbeda antarrilis Coolify.
 | Build Stage/Target | runtime, atau kosong untuk stage terakhir |
 | Ports Exposes/internal port | 8080 |
 | Ports Mappings/published host ports | Kosong |
-| Domain | https://toke.example.com, mengarah ke internal 8080 |
+| Domains | https://toke.example.com:8080, ganti hostname dengan domain aplikasi Anda |
 | Replicas | 1 |
 | Auto Deploy dari push | Matikan dahulu; update database dilakukan terencana |
 | Preview deployment | Matikan dahulu; jangan membagikan mount data produksi ke preview |
 
-Jika editor domain meminta port target pada URL, masukkan **https://toke.example.com:8080** sebagai pengaturan routing. Akses pengguna tetap **https://toke.example.com** melalui 443; **APP_URL dan alamat browser tidak memakai :8080**. Pastikan HTTPS dan pengalihan HTTP → HTTPS diaktifkan. Dockerfile menjalankan server pada 0.0.0.0:8080. [Build Dockerfile di Coolify](https://coolify.io/docs/applications/builds/dockerfile).
+Pada kolom **Domains**, gunakan **https://toke.example.com:8080** setelah mengganti hostname dengan domain aplikasi Anda. Akhiran `:8080` menentukan port tujuan proxy di dalam container. Akses pengguna tetap **https://toke.example.com** melalui 443; **APP_URL dan alamat browser tidak memakai :8080**. Jika domain tidak menyertakan port, Coolify memakai port pertama dari Ports Exposes; isi **8080** saja pada field tersebut. Nginx menerima HTTP pada port internal 8080, sedangkan HTTPS pengguna ditangani proxy Coolify. Pastikan HTTPS dan pengalihan HTTP → HTTPS diaktifkan. Dockerfile menjalankan server pada 0.0.0.0:8080. [Pengaturan domain dan port Coolify](https://coolify.io/docs/applications/configuration/general), [build Dockerfile di Coolify](https://coolify.io/docs/applications/builds/dockerfile).
 
 ### 7.2 Tambahkan dua persistent directory mount
 
@@ -334,6 +334,8 @@ if (-not (Test-Path -LiteralPath '.env.production')) {
 File `.env.production` diabaikan Git dan tidak masuk image Docker. File ini adalah lembar persiapan; Coolify **tidak otomatis membacanya dari komputer Anda**. Lengkapi `APP_URL`, `APP_KEY`, `TRUSTED_PROXIES`, `DB_HOST`, `DB_PASSWORD`, serta SMTP, lalu masukkan nilainya ke **Production Environment Variables** resource aplikasi. Jika `.env.production` sudah disiapkan pada komputer ini, gunakan key yang tersimpan di sana; jangan membuat key baru setiap deploy. `.env` lokal tetap untuk development. Untuk Dockerfile Coolify gunakan template dalam `deploy/coolify/` agar path container sesuai.
 
 Pada Coolify, aktifkan **Runtime Variable** dan nonaktifkan **Build Variable** untuk isian ini. Untuk password yang mengandung `$`, aktifkan **Literal** agar nilainya tidak dianggap referensi variabel. Setelah mengimpor lewat editor bulk, periksa nilai melalui editor per variabel. Hapus `DB_URL`, `MAIL_URL`, dan `SESSION_DOMAIN` lama jika sebelumnya ada: URL koneksi dapat menimpa konfigurasi database/SMTP di bawah, sedangkan cookie sebaiknya hanya berlaku pada host aplikasi. Simpan lalu **Redeploy** agar container dan cache konfigurasi memakai nilai baru. [Environment variables Coolify](https://coolify.io/docs/applications/configuration/environment-variables), [cache konfigurasi Laravel 13](https://laravel.com/docs/13.x/configuration#configuration-caching).
+
+**Isi APP_URL secara eksplisit:** gunakan satu URL publik HTTPS aplikasi, misalnya `https://toke.namausaha.id` setelah menggantinya dengan domain sebenarnya. Pada editor per variabel, Key adalah `APP_URL` dan Value hanya URL tersebut; jangan menempelkan `APP_URL=` ke kolom Value. Jangan memakai `http://`, domain tanpa `https://`, URL dashboard Coolify, `/login`, query, fragment, atau daftar beberapa domain. Jika Domains Coolify memakai `https://toke.namausaha.id:8080` untuk routing internal, APP_URL tetap `https://toke.namausaha.id`. APP_URL harus menjadi Production Runtime Variable pada resource aplikasi CLBK. Kolom Domains dan APP_URL memiliki fungsi berbeda: domain mengatur proxy, sedangkan APP_URL mengatur alamat yang dipakai Laravel untuk membuat tautan. Setelah memperbaiki nilai, simpan dan Redeploy; container yang gagal boot tidak perlu dipaksa menjalankan Artisan terlebih dahulu. [Domain dan port internal Coolify](https://coolify.io/docs/applications/configuration/general#domains).
 
 Gunakan Environment Variables **resource CLBK TOKE**, bukan environment instance Coolify. Semua nilai berikut adalah **runtime**; jangan aktifkan Available at Buildtime untuk APP_KEY, kredensial SMTP, atau ping URL. Image dibangun tanpa secret produksi. Jika memakai editor bulk, periksa kembali nilai setelah disimpan, terutama tanda kutip dan password yang mengandung karakter khusus.
 
@@ -406,13 +408,13 @@ Contoh hasil mungkin 10.0.1.0/24; **gunakan hasil nyata**, bukan menyalin contoh
 
 Gunakan health check HTTP **GET /healthz**, port **8080**, status **200**, interval 30 detik, timeout 5 detik, startup/start period 120 detik. Dockerfile juga menyediakannya. Endpoint ini memeriksa Nginx → PHP-FPM dan tetap bisa sukses selama maintenance awal; **bukan bukti database/backup sehat**. /up dan doctor diperiksa setelah inisialisasi. [Health check Coolify](https://coolify.io/docs/applications/configuration/health-checks).
 
-Jangan memasang pre/post-deploy command migrate/seed otomatis dahulu. Simpan konfigurasi, lalu klik **Deploy**. Buka **Deployment Logs** sampai build selesai dan container running/healthy. Build pertama dapat lama karena mengunduh dependency dan membangun aset.
+Kosongkan **Pre-deployment Command** dan **Post-deployment Command** migrasi/seed pada pemasangan awal. Inisialisasi dilakukan melalui terminal setelah container siap, sesuai bagian 8. Simpan konfigurasi, lalu klik **Deploy**. Buka **Deployment Logs** sampai build selesai dan container running/healthy. Build pertama dapat lama karena mengunduh dependency dan membangun aset.
 
 Image memakai lockfile Composer/npm, tidak memakai vendor/node_modules dari Windows. PHP image menyediakan `pdo_mysql` dan klien MySQL untuk migrasi schema awal. SQLite di image hanya dipakai sebagai format snapshot backup portabel; database operasional tetap MySQL. Tidak perlu menjalankan npm run dev, artisan serve, atau Composer setup pada produksi.
 
 ## 8. Inisialisasi data: pilih A atau B
 
-Saat database belum ada/kosong, container sengaja menampilkan **maintenance/503** pada web dan tetap menjalankan /healthz. Ini memberi waktu membuat atau memulihkan data. Buka **Terminal resource aplikasi CLBK TOKE**, bukan terminal container Coolify/proxy. Terminal awal memakai root; perintah aplikasi dijalankan melalui gosu www-data agar izin file benar.
+Saat database kosong atau schema/trigger belum lengkap, container sengaja menampilkan **maintenance/503** pada web dan tetap menjalankan /healthz. Entrypoint memakai `clbk:database-ready --serve-maintenance`, sehingga Nginx/FPM dan terminal tersedia untuk pemulihan. Pemeriksaan `clbk:database-ready` tanpa opsi tersebut tetap gagal bila schema belum lengkap; jangan membuka maintenance sebelum pemeriksaan normal lulus. Kegagalan koneksi/versi MySQL tetap menghentikan startup. Buka **Terminal resource aplikasi CLBK TOKE**, bukan terminal container Coolify/proxy. Terminal awal memakai root; perintah aplikasi dijalankan melalui gosu www-data agar izin file benar.
 
 **Untuk pemasangan baru yang Anda pilih, gunakan jalur A.** Jalur B khusus cadangan produksi MySQL dari aplikasi versi yang sama; jalankan migrasi untuk membuat schema, tetapi jangan seed/bootstrap sebelum restore.
 
@@ -422,15 +424,17 @@ Saat database belum ada/kosong, container sengaja menampilkan **maintenance/503*
 
 ```bash
 cd /var/www/html
-gosu www-data php artisan migrate --force
-gosu www-data php artisan db:seed --force
-gosu www-data php artisan clbk:bootstrap-user
+gosu www-data php artisan clbk:mysql-initialize &&
+gosu www-data php artisan db:seed --force &&
+gosu www-data php artisan clbk:bootstrap-user &&
 gosu www-data php artisan clbk:database-ready
 ```
 
 Isi nama/email/password manajer. Password minimal 12 karakter dengan huruf dan angka. Tidak ada akun admin/password produksi bawaan. Bootstrap hanya bekerja saat tabel users kosong. Seed menyiapkan Kas Utama bersaldo nol, pengaturan, dan kategori biaya; akun tambahan dibuat manajer melalui aplikasi.
 
-Jika salah satu perintah menghasilkan error, berhenti dan perbaiki dahulu. Jangan melanjutkan seed/bootstrap atau membuka maintenance setelah migrasi gagal.
+Tanda `&&` memastikan perintah berikutnya hanya berjalan jika perintah sebelumnya berhasil. Jika ada error, berhenti dan perbaiki dahulu. Jangan melanjutkan seed/bootstrap atau membuka maintenance setelah inisialisasi gagal.
+
+`clbk:mysql-initialize` memeriksa versi MySQL, mengaktifkan maintenance, dan memeriksa isi tabel sebelum memanggil migrasi. Import awal yang terhenti boleh diulang hanya ketika riwayat migrasi dan seluruh tabel masih kosong, selain baris mutex bawaan. Jika menemukan data, atau riwayat migrasi terisi tetapi trigger belum lengkap, perintah menolak tanpa mengulang import. Schema yang sudah lengkap tidak diimpor ulang. Izin trigger diperiksa sebelum schema dimuat agar error 1419 tidak meninggalkan tabel baru setengah siap. Perintah ini tidak membuat akun, seed, atau membuka maintenance secara otomatis.
 
 Pada MySQL kosong, Laravel otomatis memuat `database/schema/mysql-schema.sql`, termasuk foreign key, CHECK, index unik, dan trigger aturan bisnis. Daftar migrasi historis ikut tercatat sehingga SQL migrasi SQLite lama tidak dijalankan pada MySQL. Jangan menjalankan `migrate:rollback`/`migrate:refresh` terhadap migrasi historis ini; gunakan backup yang cocok untuk pemulihan. Migrasi baru setelah baseline harus mendukung MySQL. [Schema dump Laravel 13](https://laravel.com/docs/13.x/migrations#squashing-migrations).
 
@@ -473,7 +477,7 @@ Pastikan APP_KEY aplikasi Coolify adalah key sumber. **TERMINAL APLIKASI**, jala
 
 ```bash
 cd /var/www/html
-gosu www-data php artisan migrate --force
+gosu www-data php artisan clbk:mysql-initialize
 gosu www-data php artisan down
 gosu www-data php artisan clbk:restore /backups/NAMA_BACKUP.zip --verify-only
 supervisorctl -c /etc/supervisor/clbk.conf stop nginx php-fpm
@@ -861,7 +865,7 @@ Seed tambahan hanya dijalankan bila instruksi rilis memerlukannya. Jangan menjal
 | Repository bisa dibuka di laptop tetapi Coolify gagal clone | Periksa izin GitHub App/deploy key ke repository private dan branch yang dipilih. |
 | File/fitur lokal tidak muncul setelah deploy | Commit/push source yang belum terkirim; cocokkan commit pada Deployment Logs. |
 | Container gagal start: mount/perangkat sama | Periksa dua mount dengan folder sumber berbeda. Untuk backup lokal Hostinger, gunakan BACKUP_REQUIRE_SEPARATE_DISK=false dan image baru sesuai bagian 5.4. Jika true, disk backup harus terpisah. |
-| 502/Bad Gateway | Periksa container running, port internal 8080, domain target, proxy dan health check. Port FPM 9000 bukan port HTTP. |
+| 502/Bad Gateway | Ikuti diagnosis bagian 18.1. Ports Exposes harus 8080 dan Domains mengarah ke port tersebut. Port FPM 9000 bukan port HTTP. |
 | 503 sesudah deploy pertama | Maintenance awal memang aktif; selesaikan jalur A/B lalu artisan up. Sesudah update/restore, buka hanya setelah diverifikasi. |
 | Healthz sehat tetapi aplikasi error | Healthz hanya memeriksa Nginx/FPM. Periksa runtime env, log Laravel, /up dan doctor; pastikan migrasi telah dijalankan pada jalur A atau restore sukses pada B. |
 | HTTPS tidak terbit atau klien menolak sertifikat | DNS harus ke VPS yang benar, 80/443 terbuka, hapus AAAA yang salah, periksa proxy dan waktu perangkat. Cloudflare DNS only dahulu. Jangan mematikan verifikasi SSL. |
@@ -874,8 +878,9 @@ Seed tambahan hanya dijalankan bila instruksi rilis memerlukannya. Jangan menjal
 | Doctor: heartbeat terlambat | Scheduled Task harus enabled, container/command benar, Recent executions tidak gagal. Jangan menggandakan scheduler untuk memperbaikinya. |
 | Doctor: backup tua/tidak valid | Baca kegagalan backup, ruang disk dan keberadaan bukti. Buat backup baru hanya setelah sebab diperbaiki, lalu verify. Jangan menghapus bukti yang masih dirujuk. |
 | APP_ENV harus production | Isi APP_ENV=production pada Production Environment Variables aplikasi dan aktifkan Runtime Variable. File .env.production lokal tidak otomatis dibaca Coolify. Simpan lalu Redeploy. |
+| APP_URL produksi harus berupa origin HTTPS | Pada resource aplikasi, isi APP_URL dengan satu URL publik HTTPS, misalnya https://toke.namausaha.id sesuai domain sebenarnya. Value tidak memuat APP_URL=, /login, query, fragment, atau port internal :8080. Aktifkan Production Runtime Variable, simpan dan Redeploy. Rincian pada bagian 7.5. |
 | MySQL tidak dapat dihubungi | Pastikan resource MySQL healthy, DB_HOST memakai hostname Internal URL, port 3306, password normal user benar, serta aplikasi/database berada pada destination yang sama. |
-| Error 1419 saat migrasi | Jalankan SET PERSIST log_bin_trust_function_creators=ON melalui akun root pada terminal resource MySQL, lalu periksa migrasi. Jangan menghapus trigger untuk melewati error. |
+| Error 1419 saat migrasi / Schema atau trigger belum lengkap | Ikuti pemulihan bagian 18.2. Administrator MySQL menetapkan log_bin_trust_function_creators=ON; gunakan image baru dan clbk:mysql-initialize untuk instalasi kosong yang terhenti. Jangan menghapus data atau trigger. |
 | MySQL deadlock/lock timeout | Koordinator mencoba ulang konflik 1205/1213 maksimal tiga kali. Periksa beban/operasi bersamaan dan riwayat transaksi sebelum submit ulang. Tetap gunakan idempotency key. |
 | Restore terhenti | Pertahankan maintenance dan hentikan worker. Periksa safety backup serta trigger MySQL dengan clbk:database-ready dan clbk:doctor sebelum artisan up. Restore melepas/memasang kembali trigger; proses tidak boleh dihentikan di tengah jalan. |
 | Disk penuh | Periksa host dan volume backup; backup manual/offsite/image/log bisa tumbuh. Arsipkan sesuai retensi setelah verifikasi. Jangan memakai docker system prune --volumes sembarangan. |
@@ -896,6 +901,67 @@ ls -lah /data/storage/logs
 Baca Runtime/Deployment Logs Coolify dan log Laravel privat. Jangan mengaktifkan APP_DEBUG di produksi untuk membagikan stack trace. Sebelum mengirim log ke teknisi, sembunyikan APP_KEY, kredensial SMTP, session cookie, reset token, ping URL, email/data pelanggan dan angka usaha sensitif.
 
 Untuk merotasi log scheduler yang terus bertambah, teknisi dapat memasang logrotate pada **SERVER** untuk `/srv/clbk/data/storage/logs/backup-scheduler.log`, harian, simpan 14, compress, missingok/notifempty, create 0640 uid/gid www-data (33), su www-data www-data. Jalankan logrotate --debug untuk meninjau sebelum mengaktifkannya. Log Laravel daily mengikuti LOG_DAILY_DAYS; ZIP backup tidak dirotasi dengan logrotate.
+
+### 18.1 Deploy sukses tetapi website Bad Gateway
+
+Deployment yang selesai belum cukup untuk menentukan penyebab 502. Periksa jalur **browser → proxy Coolify → Nginx port 8080 → PHP-FPM** secara bertahap.
+
+1. Buka **resource aplikasi CLBK → Configuration → General/Network**. Isi **Ports Exposes** dengan `8080` saja, **Ports Mappings** tetap kosong, dan **Domains** dengan `https://DOMAIN_APLIKASI_ANDA:8080`. Ganti placeholder dengan hostname sebenarnya. Jangan memakai port 9000 sebagai tujuan domain; port tersebut memakai FastCGI, bukan HTTP.
+2. Pada **Production Environment Variables**, APP_URL tetap `https://DOMAIN_APLIKASI_ANDA`, tanpa `:8080`. Simpan perubahan konfigurasi dan klik **Redeploy** agar routing container diperbarui.
+3. Periksa bahwa container terbaru berstatus **running/healthy** pada Coolify. Bila restart berulang atau unhealthy, baca Runtime Logs sebelum menyimpulkan proxy salah port.
+4. Buka **Terminal resource aplikasi CLBK**, lalu jalankan dua perintah berikut. Perintah hanya membaca status dan tidak menampilkan env atau cookie:
+
+```bash
+curl -sS --max-time 10 -o /dev/null -w 'healthz_http=%{http_code}\n' http://127.0.0.1:8080/healthz
+supervisorctl -c /etc/supervisor/clbk.conf status
+```
+
+Kedua proses `nginx` dan `php-fpm` seharusnya berstatus `RUNNING`. Baca hasil curl sebagai berikut:
+
+| Hasil di dalam container | Makna dan langkah berikutnya |
+|---|---|
+| healthz_http=200, tetapi domain publik 502 | Nginx dan FPM bisa saling menghubungi. Periksa tujuan port domain, proxy server berstatus Running, serta network/destination aplikasi dan proxy. Jangan membuka port 8080 ke internet untuk melewati proxy. |
+| healthz_http=502 | Nginx menerima request, tetapi jalur ke FPM gagal. Periksa status php-fpm dan Runtime Logs; port FPM pada repo adalah 127.0.0.1:9000. |
+| healthz_http=000 disertai connection refused/timeout | Nginx belum menerima request pada port 8080, proses belum siap, atau container bermasalah. Periksa status nginx dan Runtime Logs. |
+| Status lain | Periksa Runtime Logs dan apakah image/konfigurasi yang dipakai sesuai commit deployment; endpoint healthz pada repo seharusnya mengembalikan 200. |
+
+Jika terminal tidak bisa dibuka, ambil 30 baris terakhir Runtime Logs dari resource aplikasi. Untuk diagnosis lanjutan, catat URL publik, nilai Domains, Ports Exposes, hasil kedua perintah, dan status container. Jangan membagikan seluruh env atau output `docker inspect` lengkap karena dapat berisi secret. [Panduan Bad Gateway Coolify](https://coolify.io/docs/troubleshoot/applications/bad-gateway).
+
+Jika setelah routing diperbaiki website menampilkan **503 maintenance**, selesaikan inisialisasi database/akun dan verifikasi bagian 8–9 sebelum membuka aplikasi. Maintenance awal tidak diselesaikan dengan menghapus data atau seed ulang database yang sudah dipakai.
+
+### 18.2 Error 1419 dan container restart karena schema belum lengkap
+
+Jika log berisi `ERROR 1419 (HY000)` saat `CREATE TRIGGER`, MySQL sudah dapat dihubungi tetapi akun aplikasi belum boleh membuat trigger ketika binary logging aktif. Import schema berhenti sebagian. Pada image lama, pemeriksaan schema kemudian menghentikan entrypoint sebelum Nginx berjalan, sehingga muncul unhealthy/rollback atau Bad Gateway. Peringatan umum Coolify tentang curl bukan penyebab pada log ini; Dockerfile sudah memasang curl.
+
+Lakukan urutan berikut untuk instalasi baru:
+
+1. Pada **resource aplikasi CLBK**, kosongkan **Post-deployment Command** migrasi/seed. Jangan mematikan health check.
+2. Buka **Terminal resource MySQL** (bukan terminal aplikasi), jalankan:
+
+```bash
+mysql -u root -p
+```
+
+Masukkan root password MySQL pada prompt. Setelah masuk ke prompt `mysql>`, jalankan:
+
+```sql
+SET PERSIST log_bin_trust_function_creators = ON;
+SHOW GLOBAL VARIABLES LIKE 'log_bin_trust_function_creators';
+EXIT;
+```
+
+Hasil pemeriksaan harus `ON`. Nilai ini langsung berlaku dan tersimpan untuk restart MySQL berikutnya. Jangan mengganti DB_USERNAME aplikasi menjadi root atau memberi SUPER kepada akun aplikasi. [Trigger dan binary logging MySQL 8.4](https://dev.mysql.com/doc/refman/8.4/en/stored-programs-logging.html).
+
+3. Commit/push perubahan `app/Console/Commands/DatabaseReady.php`, file baru `app/Console/Commands/MySqlInitialize.php`, dan `deploy/coolify/entrypoint.sh`, lalu **Redeploy** dari commit tersebut. Image baru menyediakan halaman maintenance dan terminal saat schema belum lengkap. Database tidak dimigrasi otomatis oleh startup.
+4. Buka **Terminal resource aplikasi CLBK**, jalankan:
+
+```bash
+gosu www-data php artisan clbk:mysql-initialize
+```
+
+Perintah ini memeriksa isi database sebelum mengulang import. Jika berhasil, lanjutkan seed dan pembuatan akun sesuai bagian 8 A, lalu backup/verifikasi bagian 9 sebelum `artisan up`. Jika menolak karena ada data atau riwayat migrasi yang tidak lengkap, pertahankan maintenance dan tinjau pemulihan yang mempertahankan data; jangan memaksa lewat `migrate:fresh`, `db:wipe`, atau menghapus volume MySQL.
+
+Import baseline berisi `DROP TABLE IF EXISTS`, sehingga **jangan menjalankan ulang file SQL atau `migrate --force` secara buta** setelah import awal gagal. Perintah initializer membatasi percobaan ulang ke instalasi kosong. `clbk:database-ready` tanpa `--serve-maintenance` harus lulus sebelum membuka akses pengguna.
 
 ## 19. Catatan serah terima yang Anda pegang
 

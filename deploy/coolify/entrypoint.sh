@@ -69,8 +69,8 @@ gosu www-data php artisan config:cache
 gosu www-data php artisan route:cache
 gosu www-data php artisan view:cache
 
-# Wait for MySQL and keep an uninitialized database closed. Never auto-migrate,
-# auto-seed, regenerate the key, or undo existing maintenance.
-gosu www-data php artisan clbk:database-ready --wait=60
+# Keep incomplete installations closed while serving maintenance and allowing
+# terminal recovery. Never auto-migrate, seed, regenerate keys, or open maintenance.
+gosu www-data php artisan clbk:database-ready --wait=60 --serve-maintenance
 
 exec "$@"

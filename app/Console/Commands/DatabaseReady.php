@@ -11,7 +11,7 @@ use Throwable;
 
 final class DatabaseReady extends Command
 {
-    protected $signature = 'clbk:database-ready {--wait=0 : Detik menunggu koneksi MySQL}';
+    protected $signature = 'clbk:database-ready {--wait=0 : Detik menunggu koneksi MySQL} {--serve-maintenance : Izinkan server berjalan dalam maintenance saat schema belum lengkap}';
 
     protected $description = 'Periksa MySQL dan tutup instalasi yang belum diinisialisasi';
 
@@ -51,7 +51,8 @@ final class DatabaseReady extends Command
                 Artisan::call('down');
                 $this->error('Schema/trigger MySQL belum lengkap. Aplikasi tetap maintenance; periksa hasil migrasi atau restore.');
 
-                return self::FAILURE;
+                return $this->option('serve-maintenance') && app()->isDownForMaintenance()
+                    ? self::SUCCESS : self::FAILURE;
             }
             if (! DB::table('users')->exists()) {
                 Artisan::call('down');

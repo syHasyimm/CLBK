@@ -89,4 +89,61 @@ class MySqlDatabaseTest extends TestCase
         $this->artisan('clbk:database-ready')->assertSuccessful();
         $this->assertTrue($this->app->isDownForMaintenance());
     }
+
+    public function test_incomplete_schema_can_serve_maintenance_but_fails_the_strict_check(): void
+    {
+        DB::unprepared('DROP TRIGGER attachment_source_guard');
+        $this->artisan('clbk:database-ready')->assertFailed();
+        $this->assertTrue($this->app->isDownForMaintenance());
+        $this->artisan('clbk:database-ready', ['--serve-maintenance' => true])->assertSuccessful();
+        $this->assertTrue($this->app->isDownForMaintenance());
+        $this->get('/')->assertStatus(503);
+        $this->getJson('/dashboard')->assertStatus(503);
+        $this->artisan('clbk:database-ready')->assertFailed();
+    }
+
+    public function test_initializer_recovers_an_empty_interrupted_baseline_import(): void
+    {
+        DB::table('migrations')->delete();
+        DB::unprepared('DROP TRIGGER attachment_source_guard');
+        $this->artisan('clbk:mysql-initialize')->assertSuccessful();
+        $this->assertTrue(app(MySqlDatabase::class)->guardsPresent());
+        $this->assertTrue(app(MySqlDatabase::class)->integrity());
+        $this->assertDatabaseCount('migrations', count(glob(database_path('migrations/*.php'))));
+        $this->assertDatabaseCount('users', 0);
+        $this->assertTrue($this->app->isDownForMaintenance());
+    }
+
+    public function test_initializer_refuses_to_reload_a_baseline_over_existing_data(): void
+    {
+        $manager = User::factory()->manager()->create();
+        DB::table('migrations')->delete();
+        DB::unprepared('DROP TRIGGER attachment_source_guard');
+        $this->artisan('clbk:mysql-initialize')->expectsOutputToContain('sudah berisi data')->assertFailed();
+        $this->assertSame($manager->name, $manager->fresh()->name);
+        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseCount('migrations', 0);
+        $this->assertFalse(app(MySqlDatabase::class)->guardsPresent());
+        $this->assertTrue($this->app->isDownForMaintenance());
+    }
+
+    public function test_initializer_refuses_incomplete_schema_with_existing_migration_history(): void
+    {
+        $manager = User::factory()->manager()->create();
+        DB::unprepared('DROP TRIGGER attachment_source_guard');
+        $this->artisan('clbk:mysql-initialize')->expectsOutputToContain('Riwayat migrasi sudah terisi')->assertFailed();
+        $this->assertSame($manager->name, $manager->fresh()->name);
+        $this->assertDatabaseCount('migrations', count(glob(database_path('migrations/*.php'))));
+        $this->assertFalse(app(MySqlDatabase::class)->guardsPresent());
+    }
+
+    public function test_initializer_leaves_an_initialized_database_unchanged(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $this->artisan('clbk:mysql-initialize')->assertSuccessful();
+        $this->assertSame($manager->name, $manager->fresh()->name);
+        $this->assertDatabaseCount('users', 1);
+        $this->assertTrue(app(MySqlDatabase::class)->guardsPresent());
+        $this->assertTrue($this->app->isDownForMaintenance());
+    }
 }
