@@ -2,6 +2,8 @@
 
 Panduan utama deployment yang dipilih adalah [Coolify di DEPLOY.md](../DEPLOY.md). Dokumen ini merupakan referensi alternatif untuk pemasangan Linux manual dengan Nginx + PHP-FPM; jangan menjalankan scheduler systemd di bawah bersamaan dengan Scheduled Tasks Coolify. PHP dan SQLite berjalan pada satu server, diakses melalui browser komputer dan ponsel.
 
+**Catatan:** contoh SQLite di dokumen ini adalah referensi historis. Produksi yang dipilih sekarang memakai **MySQL 8.4 dan database awal kosong**; ikuti [DEPLOY.md](../DEPLOY.md) untuk konfigurasi, migrasi, backup, dan restore yang berlaku.
+
 ## Tata letak Linux acuan
 
 Gunakan `/srv/clbk/releases/<versi>` untuk kode/aset read-only, `/srv/clbk/current` menunjuk release aktif, `/srv/clbk/shared/database/database.sqlite` untuk SQLite lokal, `/srv/clbk/shared/proofs` untuk bukti privat, `/srv/clbk/shared/storage` untuk session/runtime/log/maintenance, dan mount volume berbeda `/mnt/clbk-backups` untuk ZIP. Akun proses contoh `www-data`; ubah sesuai server. Kode dapat dibaca, sedangkan shared database/private/storage/bootstrap cache dapat ditulis akun proses. Folder DB juga harus writable untuk WAL/SHM. Jangan memakai network share untuk database aktif.

@@ -7,7 +7,7 @@ use RuntimeException;
 
 final class BackupSnapshot
 {
-    private const RUNTIME = ['sessions', 'password_reset_tokens', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs'];
+    private const RUNTIME = ['sessions', 'password_reset_tokens', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'database_write_locks'];
 
     public function inspect(string $file): array
     {

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\BackupService;
+use App\Support\Database\MySqlDatabase;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -10,16 +11,24 @@ final class OperationsDoctor extends Command
 {
     protected $signature = 'clbk:doctor {--json}';
 
-    protected $description = 'Periksa integritas SQLite, umur backup, scheduler, dan ruang disk';
+    protected $description = 'Periksa integritas database, umur backup, scheduler, dan ruang disk';
 
     public function handle(BackupService $backups): int
     {
         $checks = [];
         $errorMessage = null;
         try {
-            $checks['sqlite_integrity'] = DB::selectOne('PRAGMA quick_check')->quick_check === 'ok';
-            $checks['sqlite_foreign_keys'] = DB::select('PRAGMA foreign_key_check') === [];
-            $checks['data_disk_space'] = disk_free_space(dirname(DB::connection()->getDatabaseName())) >= (int) config('backups.minimum_free_bytes');
+            if (DB::connection()->getDriverName() === 'mysql') {
+                $database = app(MySqlDatabase::class);
+                $database->assertVersion();
+                $checks['mysql_integrity'] = $database->integrity();
+                $checks['mysql_business_guards'] = $database->guardsPresent();
+                $checks['private_disk_space'] = disk_free_space(config('filesystems.disks.local.root')) >= (int) config('backups.minimum_free_bytes');
+            } else {
+                $checks['sqlite_integrity'] = DB::selectOne('PRAGMA quick_check')->quick_check === 'ok';
+                $checks['sqlite_foreign_keys'] = DB::select('PRAGMA foreign_key_check') === [];
+                $checks['data_disk_space'] = disk_free_space(dirname(DB::connection()->getDatabaseName())) >= (int) config('backups.minimum_free_bytes');
+            }
             $files = $backups->listing();
             $checks['backup_integrity'] = false;
             $checks['backup_within_24_hours'] = false;

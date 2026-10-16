@@ -79,6 +79,7 @@ class OperationalReport
 
     public function definition(User $actor, array $filters): array
     {
+        $mysql = DB::connection()->getDriverName() === 'mysql';
         $view = $filters['view'];
         $c = fn ($key, $label, $type = 'text', $sum = false) => $this->column($key, $label, $type, $sum);
         $common = [$c('date', 'Tanggal'), $c('number', 'Dokumen'), $c('party', 'Pihak terkait')];
@@ -93,7 +94,7 @@ class OperationalReport
             $paid = "(SELECT COALESCE(SUM(a.amount_idr),0) FROM customer_payment_allocations a JOIN customer_payments p ON p.id=a.customer_payment_id WHERE a.weighing_id=w.id AND p.status='posted')";
             if ($view === 'debts') {
                 $q->whereBetween('w.business_date', [$filters['from'], $filters['to']])->selectRaw("w.business_date AS date, w.total_purchase_idr AS entitlement_idr, {$paid} AS paid_idr, w.total_purchase_idr-{$paid} AS remaining_idr")
-                    ->selectRaw('CAST(julianday(?)-julianday(w.business_date) AS INTEGER) AS age_days', [app(BusinessClock::class)->date(app(BusinessClock::class)->now())]);
+                    ->selectRaw(($mysql ? 'DATEDIFF(?,w.business_date)' : 'CAST(julianday(?)-julianday(w.business_date) AS INTEGER)').' AS age_days', [app(BusinessClock::class)->date(app(BusinessClock::class)->now())]);
                 $query = DB::query()->fromSub($q, 'r');
                 $this->paymentStatus($query, $filters);
                 $query->orderBy('date')->orderBy('id');
@@ -103,10 +104,12 @@ class OperationalReport
                 if (! empty($filters['status'])) {
                     $q->where('w.status', $filters['status']);
                 }
-                $q->selectRaw("(SELECT group_concat(lw.name, ', ') FROM weighing_loaders wl JOIN loading_workers lw ON lw.id=wl.worker_id WHERE wl.weighing_id=w.id) AS workers, w.loading_rate_snapshot_idr AS rate_idr");
+                $workers = $mysql ? "GROUP_CONCAT(lw.name SEPARATOR ', ')" : "group_concat(lw.name, ', ')";
+                $q->selectRaw("(SELECT {$workers} FROM weighing_loaders wl JOIN loading_workers lw ON lw.id=wl.worker_id WHERE wl.weighing_id=w.id) AS workers, w.loading_rate_snapshot_idr AS rate_idr");
                 $q->selectRaw("(SELECT buy_price_snapshot_idr FROM weighing_items WHERE weighing_id=w.id AND fruit_type='TBS') AS tbs_price_idr, (SELECT buy_price_snapshot_idr FROM weighing_items WHERE weighing_id=w.id AND fruit_type='SORT') AS sort_price_idr");
                 $offset = CarbonImmutable::parse($filters['from'], app(BusinessClock::class)->timezone())->offset;
-                $query = $this->events($q, $filters, 'w.business_date', "date(w.voided_at, '{$offset} seconds')", [
+                $reversalDate = $mysql ? "DATE(DATE_ADD(w.voided_at, INTERVAL {$offset} SECOND))" : "date(w.voided_at, '{$offset} seconds')";
+                $query = $this->events($q, $filters, 'w.business_date', $reversalDate, [
                     'tbs_grams' => "(SELECT COALESCE(SUM(weight_grams),0) FROM weighing_items WHERE weighing_id=w.id AND fruit_type='TBS')",
                     'sort_grams' => "(SELECT COALESCE(SUM(weight_grams),0) FROM weighing_items WHERE weighing_id=w.id AND fruit_type='SORT')",
                     'purchase_idr' => 'w.total_purchase_idr', 'loading_idr' => 'w.total_loading_wage_idr']);
@@ -202,10 +205,16 @@ class OperationalReport
             $columns = [...$common, $c('account', 'Akun'), ...($receipt ? [$c('sale_type', 'Jenis penjualan'), $c('sale_number', 'Nota asal')] : [$c('description', 'Keterangan')]), $c('event', 'Pencatatan'), $c('status', 'Status voucher'), $c('amount_idr', $receipt ? 'Penerimaan neto (Rp)' : 'Biaya neto (Rp)', 'money', true), $c('method', 'Metode'), $c('reference', 'Referensi'), $c('proof_count', 'Bukti', 'number')];
         } else {
             $clock = app(BusinessClock::class);
+            $reasons = array_map(function ($path) use ($mysql) {
+                $json = "JSON_EXTRACT(a.after_json,'$.{$path}')";
+
+                return $mysql ? "CASE WHEN JSON_TYPE({$json})='NULL' THEN NULL ELSE JSON_UNQUOTE({$json}) END" : $json;
+            }, ['reversal_reason', 'void_reason', 'correction_reason']);
+            $reason = 'COALESCE(a.reason,'.implode(',', $reasons).') AS reason';
             $query = DB::table('audit_logs as a')->leftJoin('users as u', 'u.id', '=', 'a.actor_id')
                 ->whereBetween('a.occurred_at', [CarbonImmutable::parse($filters['from'], $clock->timezone())->startOfDay()->utc(), CarbonImmutable::parse($filters['to'], $clock->timezone())->endOfDay()->utc()])
                 ->select('a.id', 'a.occurred_at', 'u.name as party', 'a.action', 'a.entity_type', 'a.entity_id', 'a.before_json', 'a.after_json')
-                ->selectRaw("COALESCE(a.reason,json_extract(a.after_json,'$.reversal_reason'),json_extract(a.after_json,'$.void_reason'),json_extract(a.after_json,'$.correction_reason')) AS reason")
+                ->selectRaw($reason)
                 ->orderByDesc('a.occurred_at')->orderByDesc('a.id');
             $columns = [$c('occurred_at', 'Waktu (WIB)'), $c('party', 'Petugas'), $c('action', 'Aksi'), $c('entity_type', 'Jenis dokumen'), $c('entity_id', 'ID dokumen'), $c('changes', 'Perubahan'), $c('reason', 'Alasan koreksi')];
             $note = 'Riwayat tindakan yang tersimpan pada audit. Akses hanya untuk manajer; kredensial dan lokasi penyimpanan privat tidak disertakan dalam laporan.';

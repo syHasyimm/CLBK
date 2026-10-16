@@ -3,11 +3,11 @@ FROM php:8.4-fpm-bookworm AS php-base
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        ca-certificates curl gosu nginx supervisor unzip util-linux \
+        ca-certificates curl default-mysql-client gosu nginx supervisor unzip util-linux \
         libicu-dev libzip-dev \
     && docker-php-ext-install -j"$(nproc)" \
-        intl pcntl zip \
-    && php -r 'foreach (["curl", "fileinfo", "intl", "mbstring", "openssl", "pcntl", "pdo_sqlite", "sqlite3", "zip"] as $extension) { if (!extension_loaded($extension)) { fwrite(STDERR, "Missing extension: ".$extension.PHP_EOL); exit(1); } }' \
+        intl pcntl pdo_mysql zip \
+    && php -r 'foreach (["curl", "fileinfo", "intl", "mbstring", "openssl", "pcntl", "pdo_mysql", "pdo_sqlite", "sqlite3", "zip"] as $extension) { if (!extension_loaded($extension)) { fwrite(STDERR, "Missing extension: ".$extension.PHP_EOL); exit(1); } }' \
     && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
     && rm -rf /var/lib/apt/lists/*
 
@@ -31,7 +31,13 @@ ENV VITE_APP_NAME="CLBK TOKE"
 RUN npm run build
 
 FROM php-base AS runtime
-ENV XDG_CONFIG_HOME=/data/storage/app/config \
+ENV APP_ENV=production \
+    APP_DEBUG=false \
+    DB_CONNECTION=mysql \
+    DB_PORT=3306 \
+    CLBK_PRIVATE_STORAGE=/data/proofs \
+    BACKUP_PATH=/backups \
+    XDG_CONFIG_HOME=/data/storage/app/config \
     XDG_CACHE_HOME=/data/storage/framework/cache
 COPY --from=php-dependencies /var/www/html /var/www/html
 COPY --from=frontend /build/public/build /var/www/html/public/build

@@ -9,6 +9,8 @@
 !database/
 !database/migrations/
 !database/migrations/**
+!database/schema/
+!database/schema/**
 !database/factories/
 !database/factories/**
 !database/seeders/

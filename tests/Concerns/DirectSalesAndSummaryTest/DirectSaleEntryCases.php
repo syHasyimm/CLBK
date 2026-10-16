@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Services\AuditService;
 use App\Services\CashLedger;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -38,7 +37,7 @@ trait DirectSaleEntryCases
         $this->assertDatabaseCount('sale_receipts', 0);
         $this->assertDatabaseCount('cash_entries', 0);
         $this->assertSame(0, app(CashLedger::class)->balance($this->cash->id));
-        $this->assertSame([], DB::select('PRAGMA foreign_key_check'));
+        $this->assertForeignKeysAreValid();
         $this->get(route('factory-sales.show', $sale->id))->assertInertia(fn (Assert $p) => $p->where('record.trip', null)->where('record.vehicle.plate_number', 'BK LANGSUNG')->where('record.receivable_idr', 3149000)->where('record.received_idr', 0)->where('preview', null));
         $this->post(route('factory-sales.post', $sale->id), ['version' => 2, 'idempotency_key' => (string) Str::uuid()])->assertSessionHasErrors('operation');
         $this->get(route('factory-sales.edit', $sale->id))->assertForbidden();

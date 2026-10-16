@@ -73,7 +73,7 @@ class DirectVehicleWorkflowTest extends TestCase
         }
         $this->assertNull(FactorySale::firstOrFail()->initial_load_grams);
         $this->assertNull(FactorySale::firstOrFail()->sorted_out_grams);
-        $this->assertSame([], DB::select('PRAGMA foreign_key_check'));
+        $this->assertForeignKeysAreValid();
     }
 
     public function test_direct_access_follows_creator_instead_of_vehicle_or_trip(): void
@@ -164,6 +164,6 @@ class DirectVehicleWorkflowTest extends TestCase
             $this->assertStringContainsString('Cannot roll back', $e->getMessage());
         }
         $this->assertDatabaseCount('sort_sales', 1);
-        $this->assertSame([], DB::select('PRAGMA foreign_key_check'));
+        $this->assertForeignKeysAreValid();
     }
 }

@@ -26,7 +26,8 @@ class PaymentBalances
     {
         return $query->select('weighings.*')
             ->selectSub(DB::table('customer_payment_allocations as a')->join('customer_payments as p', 'p.id', '=', 'a.customer_payment_id')
-                ->whereColumn('a.weighing_id', 'weighings.id')->where('p.status', 'posted')->selectRaw('COALESCE(SUM(a.amount_idr),0)'), 'paid_idr');
+                ->whereColumn('a.weighing_id', 'weighings.id')->where('p.status', 'posted')->selectRaw('COALESCE(SUM(a.amount_idr),0)'), 'paid_idr')
+            ->withCasts(['paid_idr' => 'integer']);
     }
 
     public function payroll(bool $onlyOutstanding = false): Builder
@@ -34,7 +35,8 @@ class PaymentBalances
         $query = WeighingLoader::query()->join('weighings as w', 'w.id', '=', 'weighing_loaders.weighing_id')->where('w.status', 'posted')
             ->select('weighing_loaders.*', 'w.number', 'w.weighed_at', 'w.business_date', 'w.loading_basis_grams', 'w.loading_rate_snapshot_idr')
             ->selectSub(DB::table('payroll_payment_allocations as a')->join('payroll_payments as p', 'p.id', '=', 'a.payroll_payment_id')
-                ->whereColumn('a.weighing_loader_id', 'weighing_loaders.id')->where('p.status', 'posted')->selectRaw('COALESCE(SUM(a.amount_idr),0)'), 'paid_idr');
+                ->whereColumn('a.weighing_loader_id', 'weighing_loaders.id')->where('p.status', 'posted')->selectRaw('COALESCE(SUM(a.amount_idr),0)'), 'paid_idr')
+            ->withCasts(['paid_idr' => 'integer']);
         if ($onlyOutstanding) {
             $balances = DB::query()->fromSub((clone $query)->toBase(), 'payroll_balances')
                 ->select('id')->whereColumn('share_amount_idr', '>', 'paid_idr');

@@ -7,10 +7,19 @@ if [ "${APP_ENV:-}" != production ]; then
     echo 'Dockerfile Coolify ini memerlukan APP_ENV=production.' >&2
     exit 1
 fi
-if [ "${DB_DATABASE:-}" != /data/database/database.sqlite ] \
-    || [ "${CLBK_PRIVATE_STORAGE:-}" != /data/proofs ] \
+if [ "${DB_CONNECTION:-}" != mysql ] \
+    || [ -z "${DB_HOST:-}" ] || [ -z "${DB_DATABASE:-}" ] \
+    || [ -z "${DB_USERNAME:-}" ] || [ -z "${DB_PASSWORD:-}" ]; then
+    echo 'Isi DB_CONNECTION=mysql, DB_HOST, DB_DATABASE, DB_USERNAME, dan DB_PASSWORD melalui runtime environment Coolify.' >&2
+    exit 1
+fi
+if [ -n "${DB_URL:-}" ]; then
+    echo 'Hapus DB_URL; gunakan DB_HOST/DB_PORT/DB_DATABASE/DB_USERNAME/DB_PASSWORD agar konfigurasi MySQL konsisten.' >&2
+    exit 1
+fi
+if [ "${CLBK_PRIVATE_STORAGE:-}" != /data/proofs ] \
     || [ "${BACKUP_PATH:-}" != /backups ]; then
-    echo 'Gunakan path container DB_DATABASE=/data/database/database.sqlite, CLBK_PRIVATE_STORAGE=/data/proofs, BACKUP_PATH=/backups.' >&2
+    echo 'Gunakan path container CLBK_PRIVATE_STORAGE=/data/proofs dan BACKUP_PATH=/backups.' >&2
     exit 1
 fi
 
@@ -27,12 +36,12 @@ for target in /data /backups; do
 done
 
 if [ "$(stat -c %d /data)" = "$(stat -c %d /backups)" ]; then
-    echo 'Backup harus menggunakan perangkat disk berbeda dari database.' >&2
+    echo 'Backup harus menggunakan perangkat disk berbeda dari penyimpanan privat aplikasi.' >&2
     exit 1
 fi
 
 for directory in \
-    /data/database /data/proofs /data/storage /data/storage/app \
+    /data/proofs /data/storage /data/storage/app \
     /data/storage/app/config \
     /data/storage/framework /data/storage/framework/cache \
     /data/storage/framework/cache/data /data/storage/framework/sessions \
@@ -41,21 +50,13 @@ for directory in \
 done
 chown www-data:www-data /backups
 chmod 700 /backups
-if [ -f /data/database/database.sqlite ]; then
-    chown www-data:www-data /data/database/database.sqlite
-    chmod 600 /data/database/database.sqlite
-fi
-
 gosu www-data php artisan package:discover --ansi
 gosu www-data php artisan config:cache
 gosu www-data php artisan route:cache
 gosu www-data php artisan view:cache
 
-# An empty installation stays closed until an operator initializes or restores it.
-# Never auto-migrate, auto-seed, regenerate the key, or undo existing maintenance.
-if [ ! -s /data/database/database.sqlite ]; then
-    gosu www-data php artisan down
-    echo 'Database kosong: selesaikan inisialisasi/restore melalui Terminal Coolify.'
-fi
+# Wait for MySQL and keep an uninitialized database closed. Never auto-migrate,
+# auto-seed, regenerate the key, or undo existing maintenance.
+gosu www-data php artisan clbk:database-ready --wait=60
 
 exec "$@"

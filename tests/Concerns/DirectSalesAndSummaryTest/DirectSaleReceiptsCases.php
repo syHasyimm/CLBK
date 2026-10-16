@@ -139,7 +139,7 @@ trait DirectSaleReceiptsCases
         $this->get(route('sale-receipts.index', ['from' => '2026-10-10']))->assertInertia(fn (Assert $p) => $p
             ->has('factorySales.data', 0)->has('sortSales.data', 0)->has('documents.data', 0));
         $this->assertDatabaseCount('cash_entries', 6);
-        $this->assertSame([], DB::select('PRAGMA foreign_key_check'));
+        $this->assertForeignKeysAreValid();
     }
 
     public function test_receipt_action_rejects_invalid_kinds_and_nonpositive_amounts_atomically(): void

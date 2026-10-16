@@ -19,9 +19,11 @@ use App\Policies\ManagerPolicy;
 use App\Policies\SalePolicy;
 use App\Policies\TripPolicy;
 use App\Policies\WeighingPolicy;
+use App\Support\Database\MySqlQueryGrammar;
 use App\Support\ProductionSecurity;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Events\ConnectionEstablished;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -36,7 +38,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app['events']->listen(ConnectionEstablished::class, function (ConnectionEstablished $event) {
+            if ($event->connection->getDriverName() === 'mysql') {
+                $event->connection->setQueryGrammar(new MySqlQueryGrammar($event->connection));
+            }
+        });
     }
 
     /**

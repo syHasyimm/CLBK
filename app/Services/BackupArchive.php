@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -94,7 +95,12 @@ final class BackupArchive
     {
         $files = collect(File::files(database_path('migrations')))->sortBy(fn ($file) => $file->getFilename());
 
-        return hash('sha256', $files->map(fn ($file) => $file->getFilename().':'.hash_file('sha256', $file->getPathname()))->implode("\n"));
+        $fingerprints = $files->map(fn ($file) => $file->getFilename().':'.hash_file('sha256', $file->getPathname()))->all();
+        if (DB::connection()->getDriverName() === 'mysql') {
+            $fingerprints[] = 'mysql-schema.sql:'.hash_file('sha256', database_path('schema/mysql-schema.sql'));
+        }
+
+        return hash('sha256', implode("\n", $fingerprints));
     }
 
     public function proofPath(string $path): string

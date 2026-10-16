@@ -1,6 +1,6 @@
 # Deploy CLBK TOKE dengan Coolify untuk aplikasi web
 
-Panduan ini untuk pemilik usaha yang belum terbiasa deploy. Disesuaikan **16 Oktober 2026** untuk **Coolify** sesuai pilihan Anda. Contoh memakai Coolify self-hosted: dashboard Coolify dan aplikasi berjalan pada satu VPS milik Anda. Bila Coolify Anda sudah aktif, lanjut ke bagian 4 setelah memastikan server dan domainnya sesuai.
+Panduan ini untuk pemilik usaha yang belum terbiasa deploy. Disesuaikan **16 Oktober 2026** untuk **Coolify + MySQL 8.4 dengan database awal kosong**, sesuai pilihan Anda. Dashboard Coolify, container aplikasi, dan resource MySQL terpisah berjalan pada satu VPS milik Anda. Bila Coolify sudah aktif, lanjut ke bagian 4 setelah memastikan server dan domainnya sesuai. Instruksi produksi SQLite pada catatan tahap sebelumnya sudah digantikan oleh panduan ini.
 
 Hasil akhirnya: satu alamat seperti **https://toke.namausaha.id**, diakses melalui browser komputer maupun ponsel. Semua memakai backend dan data usaha yang sama. Anda tidak perlu memasang PHP/database pada komputer pengguna atau HP. **Domain, server, dan akun Coolify produksi belum diberikan; panduan dan konfigurasi ini belum merupakan deployment yang sudah berjalan.**
 
@@ -59,7 +59,7 @@ Ganti semua contoh `IP_SERVER_ANDA`, `toke.example.com`, `panel.example.com`, `e
 
 Siapkan: akun VPS/domain/GitHub, email pengelola, domain aplikasi dan panel, SMTP, pilihan data awal kosong atau pindahan, serta orang yang menerima alarm. Aktifkan autentikasi dua faktor pada akun pengelola bila tersedia. Simpan secret di password manager.
 
-**Koneksi ke server tetap diperlukan.** Browser tidak mempunyai mode pencatatan transaksi offline. Jangan menjalankan beberapa server penulis dengan salinan database masing-masing. SQLite aktif hanya dibuka oleh aplikasi pada satu VPS, bukan lewat network share.
+**Koneksi ke server tetap diperlukan.** Browser tidak mempunyai mode pencatatan transaksi offline. Semua perangkat memakai aplikasi yang sama dan satu resource MySQL. Database hanya diakses backend melalui jaringan privat Coolify; port 3306 tidak perlu dibuka ke internet.
 
 ## 3. Pasang Coolify pada VPS baru
 
@@ -182,10 +182,10 @@ UID/GID 33 adalah www-data di image PHP yang disediakan. Dua angka perangkat has
 
 | Di server/host | Di dalam container | Isi |
 |---|---|---|
-| /srv/clbk/data | /data | Folder database, proofs, storage/runtime/log |
+| /srv/clbk/data | /data | Proofs, storage/runtime/log aplikasi |
 | /mnt/clbk-backups/archives | /backups | ZIP backup pada disk berbeda |
 
-Folder /data/database dan lainnya akan dibuat entrypoint container. **Jangan mount seluruh /var/www/html**: kode/vendor/aset berada di image, data usaha berada di dua mount di atas. Jangan membuat storage:link untuk bukti; file bukti bersifat privat.
+Entrypoint membuat folder file privat/runtime. Data MySQL berada di persistent storage resource MySQL pada `/var/lib/mysql`, bukan di `/data` aplikasi. Pastikan volume MySQL berada pada disk utama/data dan backup pada disk berbeda. **Jangan mount seluruh /var/www/html**: kode/vendor/aset berada di image. Jangan membuat storage:link untuk bukti; file bukti bersifat privat.
 
 ## 6. Siapkan source di GitHub private
 
@@ -224,6 +224,32 @@ git ls-files -- '.env' '.env.production' '*.sqlite*' '*credentials.json'
 Perintah kedua seharusnya tidak menampilkan file sensitif yang dilacak. .gitignore tidak menghapus secret yang sudah pernah terlanjur di-commit; bila ada kasus itu, keluarkan dari repository dan ganti secret yang terekspos sebelum deploy. Jangan menggunakan git add . tanpa meninjau daftar file terlebih dahulu.
 
 ## 7. Buat aplikasi Coolify dan isi konfigurasi
+
+### 7.0 Buat resource MySQL 8.4 terlebih dahulu
+
+1. Buka **Project CLBK TOKE → Production → New Resource → Databases → MySQL**.
+2. Pilih server dan **destination/network yang sama dengan aplikasi**.
+3. Pada General, pilih image **`mysql:8.4`**, initial database **`clbk`**, dan normal username **`clbk`**. Simpan normal-user password serta root password di pengelola password, dengan label berbeda.
+4. Biarkan **Make it publicly available nonaktif** dan jangan membuat port mapping 3306. Pastikan persistent storage MySQL tetap terpasang pada `/var/lib/mysql`; jangan menghapus volume itu saat redeploy.
+5. Klik **Start**, tunggu resource running/healthy. Dari **Internal URL**, catat hostname, port, database, username dan password. `DB_HOST` memakai hostname internal tersebut, **bukan localhost, IP publik, atau domain web**.
+
+Resource aplikasi tidak menjalankan MySQL di dalam image PHP. Keduanya berkomunikasi melalui network privat. [MySQL di Coolify](https://coolify.io/docs/databases/mysql).
+
+Sebelum migrasi pertama, izinkan akun aplikasi memasang trigger penjaga transaksi saat binary logging MySQL aktif. Buka **Terminal resource MySQL**, jalankan:
+
+```bash
+mysql -u root -p
+```
+
+Masukkan **root password MySQL resource ini** pada prompt. Di prompt `mysql>`, jalankan:
+
+```sql
+SET PERSIST log_bin_trust_function_creators = ON;
+SHOW VARIABLES LIKE 'log_bin_trust_function_creators';
+EXIT;
+```
+
+Hasil harus `ON`. Pengaturan tersimpan pada volume MySQL dan tetap berlaku setelah restart. Akun aplikasi tetap memakai normal user `clbk`; root hanya untuk administrasi. Tanpa pengaturan ini, migrasi dapat ditolak dengan error 1419 saat membuat trigger. Jangan menghilangkan trigger untuk melewati error. [Aturan binary logging dan trigger MySQL 8.4](https://dev.mysql.com/doc/refman/8.4/en/stored-programs-logging.html).
 
 ### 7.1 Hubungkan repository
 
@@ -271,6 +297,8 @@ Jika memakai penyedia lain, ikuti host/port yang diizinkan. MAIL_SCHEME=smtp unt
 
 **Pemasangan baru tanpa data lama:** buat key sekali pada SERVER, salin hasilnya ke vault dan Environment Variables aplikasi:
 
+Jika `.env.production` lokal sudah berisi APP_KEY yang dibuat saat persiapan instalasi baru ini, gunakan key tersebut dan simpan di vault; lewati pembuatan key di bawah. Jangan mengganti key setelah aplikasi mulai menyimpan data.
+
 ```bash
 openssl rand -base64 32
 ```
@@ -289,7 +317,7 @@ if (-not (Test-Path -LiteralPath '.env.production')) {
 }
 ```
 
-File `.env.production` diabaikan Git dan tidak masuk image Docker. File ini adalah lembar persiapan; Coolify **tidak otomatis membacanya dari komputer Anda**. Lengkapi `APP_URL`, `APP_KEY`, `TRUSTED_PROXIES`, serta konfigurasi SMTP, kemudian masukkan nilainya ke Environment Variables resource aplikasi. `.env` lokal tetap untuk development. Template `.env.production.example` di root memakai path instalasi langsung pada server; untuk Dockerfile Coolify gunakan template dalam `deploy/coolify/` agar path container sesuai.
+File `.env.production` diabaikan Git dan tidak masuk image Docker. File ini adalah lembar persiapan; Coolify **tidak otomatis membacanya dari komputer Anda**. Lengkapi `APP_URL`, `APP_KEY`, `TRUSTED_PROXIES`, `DB_HOST`, `DB_PASSWORD`, serta SMTP, lalu masukkan nilainya ke **Production Environment Variables** resource aplikasi. Jika `.env.production` sudah disiapkan pada komputer ini, gunakan key yang tersimpan di sana; jangan membuat key baru setiap deploy. `.env` lokal tetap untuk development. Untuk Dockerfile Coolify gunakan template dalam `deploy/coolify/` agar path container sesuai.
 
 Pada Coolify, aktifkan **Runtime Variable** dan nonaktifkan **Build Variable** untuk isian ini. Untuk password yang mengandung `$`, aktifkan **Literal** agar nilainya tidak dianggap referensi variabel. Setelah mengimpor lewat editor bulk, periksa nilai melalui editor per variabel. Hapus `DB_URL`, `MAIL_URL`, dan `SESSION_DOMAIN` lama jika sebelumnya ada: URL koneksi dapat menimpa konfigurasi database/SMTP di bawah, sedangkan cookie sebaiknya hanya berlaku pada host aplikasi. Simpan lalu **Redeploy** agar container dan cache konfigurasi memakai nilai baru. [Environment variables Coolify](https://coolify.io/docs/applications/configuration/environment-variables), [cache konfigurasi Laravel 13](https://laravel.com/docs/13.x/configuration#configuration-caching).
 
@@ -310,8 +338,14 @@ LOG_CHANNEL=stack
 LOG_STACK=daily
 LOG_LEVEL=warning
 LOG_DAILY_DAYS=14
-DB_CONNECTION=sqlite
-DB_DATABASE=/data/database/database.sqlite
+DB_CONNECTION=mysql
+DB_HOST=ISI_HOSTNAME_INTERNAL_MYSQL
+DB_PORT=3306
+DB_DATABASE=clbk
+DB_USERNAME=clbk
+DB_PASSWORD=ISI_PASSWORD_NORMAL_USER_MYSQL
+DB_CHARSET=utf8mb4
+DB_COLLATION=utf8mb4_0900_bin
 CLBK_PRIVATE_STORAGE=/data/proofs
 SESSION_DRIVER=database
 SESSION_LIFETIME=120
@@ -359,13 +393,13 @@ Gunakan health check HTTP **GET /healthz**, port **8080**, status **200**, inter
 
 Jangan memasang pre/post-deploy command migrate/seed otomatis dahulu. Simpan konfigurasi, lalu klik **Deploy**. Buka **Deployment Logs** sampai build selesai dan container running/healthy. Build pertama dapat lama karena mengunduh dependency dan membangun aset.
 
-Image memakai lockfile Composer/npm, tidak memakai vendor/node_modules dari Windows. Tidak perlu menjalankan npm run dev, artisan serve, Composer setup, atau memasang database MySQL/Postgres tambahan untuk alur SQLite ini.
+Image memakai lockfile Composer/npm, tidak memakai vendor/node_modules dari Windows. PHP image menyediakan `pdo_mysql` dan klien MySQL untuk migrasi schema awal. SQLite di image hanya dipakai sebagai format snapshot backup portabel; database operasional tetap MySQL. Tidak perlu menjalankan npm run dev, artisan serve, atau Composer setup pada produksi.
 
 ## 8. Inisialisasi data: pilih A atau B
 
 Saat database belum ada/kosong, container sengaja menampilkan **maintenance/503** pada web dan tetap menjalankan /healthz. Ini memberi waktu membuat atau memulihkan data. Buka **Terminal resource aplikasi CLBK TOKE**, bukan terminal container Coolify/proxy. Terminal awal memakai root; perintah aplikasi dijalankan melalui gosu www-data agar izin file benar.
 
-**Pilih satu jalur. Jangan migrate/seed jalur A sebelum restore jalur B.**
+**Untuk pemasangan baru yang Anda pilih, gunakan jalur A.** Jalur B khusus cadangan produksi MySQL dari aplikasi versi yang sama; jalankan migrasi untuk membuat schema, tetapi jangan seed/bootstrap sebelum restore.
 
 ### A. Usaha mulai dari database kosong
 
@@ -373,18 +407,23 @@ Saat database belum ada/kosong, container sengaja menampilkan **maintenance/503*
 
 ```bash
 cd /var/www/html
-gosu www-data touch /data/database/database.sqlite
-chmod 600 /data/database/database.sqlite
 gosu www-data php artisan migrate --force
 gosu www-data php artisan db:seed --force
 gosu www-data php artisan clbk:bootstrap-user
+gosu www-data php artisan clbk:database-ready
 ```
 
 Isi nama/email/password manajer. Password minimal 12 karakter dengan huruf dan angka. Tidak ada akun admin/password produksi bawaan. Bootstrap hanya bekerja saat tabel users kosong. Seed menyiapkan Kas Utama bersaldo nol, pengaturan, dan kategori biaya; akun tambahan dibuat manajer melalui aplikasi.
 
+Jika salah satu perintah menghasilkan error, berhenti dan perbaiki dahulu. Jangan melanjutkan seed/bootstrap atau membuka maintenance setelah migrasi gagal.
+
+Pada MySQL kosong, Laravel otomatis memuat `database/schema/mysql-schema.sql`, termasuk foreign key, CHECK, index unik, dan trigger aturan bisnis. Daftar migrasi historis ikut tercatat sehingga SQL migrasi SQLite lama tidak dijalankan pada MySQL. Jangan menjalankan `migrate:rollback`/`migrate:refresh` terhadap migrasi historis ini; gunakan backup yang cocok untuk pemulihan. Migrasi baru setelah baseline harus mendukung MySQL. [Schema dump Laravel 13](https://laravel.com/docs/13.x/migrations#squashing-migrations).
+
 Jangan menjalankan **RoleUserSeeder, migrate:fresh, migrate:refresh, db:wipe** pada produksi. Jangan membawa akun contoh berpassword yang diketahui ke internet. Lanjut bagian 9.
 
 ### B. Pindahkan data usaha yang sudah ada
+
+Bagian ini hanya menerima backup dengan `database_driver=mysql`. Backup SQLite lama tidak dapat langsung dipulihkan ke MySQL; konversi data lintas engine memerlukan pekerjaan terpisah. Ini tidak diperlukan untuk instalasi database kosong yang Anda pilih.
 
 Pastikan sumber berisi data usaha nyata yang memang akan diteruskan. Bila sumber hanya latihan, pilih jalur A. Siapkan akun manajer produksi di sumber dan ganti/nonaktifkan akun demo sebelum pemindahan. Bekukan input semua pengguna sampai pemindahan selesai; jangan membiarkan laptop dan VPS masing-masing menerima transaksi.
 
@@ -415,12 +454,11 @@ scp -i "$env:USERPROFILE/.ssh/clbk_deploy" 'D:/LOKASI-BACKUP/NAMA_BACKUP.zip' ro
 install -o 33 -g 33 -m 600 /root/NAMA_BACKUP.zip /mnt/clbk-backups/archives/NAMA_BACKUP.zip
 ```
 
-Pastikan APP_KEY aplikasi Coolify adalah key sumber. **TERMINAL APLIKASI**, tanpa migrate/seed terlebih dahulu:
+Pastikan APP_KEY aplikasi Coolify adalah key sumber. **TERMINAL APLIKASI**, jalankan migrate untuk membuat schema, tanpa seed/bootstrap:
 
 ```bash
 cd /var/www/html
-gosu www-data touch /data/database/database.sqlite
-chmod 600 /data/database/database.sqlite
+gosu www-data php artisan migrate --force
 gosu www-data php artisan down
 gosu www-data php artisan clbk:restore /backups/NAMA_BACKUP.zip --verify-only
 supervisorctl -c /etc/supervisor/clbk.conf stop nginx php-fpm
@@ -428,7 +466,7 @@ gosu www-data php artisan clbk:restore /backups/NAMA_BACKUP.zip --new-server --f
 supervisorctl -c /etc/supervisor/clbk.conf start php-fpm nginx
 ```
 
---new-server mensyaratkan file database belum ada atau berukuran nol. Jika ditolak karena sudah terisi, **jangan menghapus database**; periksa isinya. Maintenance tetap aktif sesudah restore; akun lama dipulihkan dan sesi/token lama dicabut. Tidak perlu bootstrap-user lagi.
+--new-server mensyaratkan schema MySQL sudah dimigrasi tetapi belum memiliki data usaha/pengguna. Jika ditolak karena sudah terisi, **jangan menghapus database**; periksa isinya. Maintenance tetap aktif sesudah restore; akun lama dipulihkan dan sesi/token lama dicabut. Tidak perlu bootstrap-user lagi.
 
 Scheduler belum dibuat pada instalasi baru. Jika memulihkan resource yang sudah pernah aktif, nonaktifkan semua scheduled task dan tunggu eksekusi berjalan selesai sebelum langkah stop service. Jangan klik redeploy ketika pemulihan berjalan. Sumber lama tetap maintenance sampai VPS diterima, kemudian dihentikan sebagai server penulis.
 
@@ -445,6 +483,7 @@ Catat ID arsip hasilnya. Ganti nama pada perintah berikut, lalu:
 
 ```bash
 gosu www-data php artisan clbk:restore /backups/NAMA_BACKUP.zip --verify-only
+gosu www-data php artisan clbk:database-ready
 gosu www-data php artisan up
 ```
 
@@ -487,7 +526,7 @@ Tunggu 1–2 menit, lalu **TERMINAL APLIKASI**:
 gosu www-data php artisan clbk:doctor --json
 ```
 
-Harapkan exit code 0/semua pemeriksaan healthy. Doctor memeriksa SQLite/FK, ruang disk data, isi/umur backup maksimum 24 jam, dan heartbeat maksimum 5 menit. Backup pertama dari bagian 9 diperlukan agar pemeriksaan backup bisa lulus. Doctor bukan pengirim email otomatis dan tidak memeriksa bahwa offsite sudah terkirim.
+Harapkan exit code 0/semua pemeriksaan healthy. Doctor memeriksa versi MySQL, InnoDB/FK, keberadaan trigger dan mutex transaksi, ruang disk file privat, isi/umur backup maksimum 24 jam, dan heartbeat maksimum 5 menit. Ruang disk server MySQL perlu dipantau juga melalui resource MySQL/VPS. Backup pertama dari bagian 9 diperlukan agar pemeriksaan backup bisa lulus. Doctor bukan pengirim email otomatis dan tidak memeriksa bahwa offsite sudah terkirim.
 
 ### 10.2 Alarm jika scheduler/server bermasalah
 
@@ -549,7 +588,7 @@ Pengujian otomatis aplikasi tidak menggantikan uji server dan browser perangkat 
 
 ### 14.1 Apa yang harus disimpan
 
-Backup aplikasi bukan hanya database. ZIP clbk mencakup snapshot SQLite yang konsisten, seluruh bukti yang dirujuk, serta manifest/hash bertanda HMAC. Tidak perlu menyalin file SQLite/WAL secara manual. Default menyimpan tujuh backup harian dan satu per minggu untuk empat minggu. Backup manual/pre-upgrade/pre-restore **tidak dihapus otomatis**; pantau kapasitas.
+Backup aplikasi bukan hanya database. ZIP clbk mencakup snapshot MySQL dari satu read transaction yang konsisten, seluruh bukti yang dirujuk, serta manifest/hash bertanda HMAC. Di dalam arsip, data snapshot memakai wadah portabel `database.sqlite`; ini bukan database operasional dan tidak mengganti MySQL. Tidak perlu menyalin `/var/lib/mysql` secara manual. Default menyimpan tujuh backup harian dan satu per minggu untuk empat minggu. Backup manual/pre-upgrade/pre-restore **tidak dihapus otomatis**; pantau kapasitas.
 
 Simpan di luar VPS:
 
@@ -575,7 +614,7 @@ gosu www-data php artisan clbk:backup --reason=manual
 
 ### 14.3 Offsite otomatis terenkripsi, pilihan untuk dibantu teknisi
 
-Contoh memakai Rclone Crypt → bucket Spaces private di region berbeda. Spaces hanyalah tempat menyimpan file; jangan memindahkan SQLite aktif ke sana. `rclone copy` menyalin tanpa menghapus file lama di tujuan, berbeda dari sync. [Rclone copy](https://rclone.org/commands/rclone_copy/), [Crypt](https://rclone.org/crypt/).
+Contoh memakai Rclone Crypt → bucket Spaces private di region berbeda. Spaces menyimpan salinan ZIP backup, bukan volume MySQL aktif. `rclone copy` menyalin tanpa menghapus file lama di tujuan, berbeda dari sync. [Rclone copy](https://rclone.org/commands/rclone_copy/), [Crypt](https://rclone.org/crypt/).
 
 Di dashboard penyedia, buat bucket **private**, misalnya pada FRA1 bila VPS berada di SGP1. Buat access key terbatas ke bucket tersebut; jangan gunakan token pengelola seluruh akun. Catat endpoint yang benar. [Akses Spaces](https://docs.digitalocean.com/products/spaces/how-to/manage-access/).
 
@@ -670,7 +709,7 @@ Lanjutkan latihan restore sebenarnya di lingkungan terpisah. Crypt didekripsi ol
 
 Pada Coolify self-hosted, buka **Settings → Backup**, konfigurasi jadwal dan **Back up now**, pastikan eksekusi Success lalu download ke tempat aman. Ini menyimpan konfigurasi/dashboard Coolify, **tidak otomatis mencakup data aplikasi CLBK**. Simpan juga file **/data/coolify/source/.env** secara aman di luar VPS; APP_KEY instance tersebut diperlukan untuk membaca kembali kredensial terenkripsi Coolify. Jangan memasukkannya ke Git atau ZIP untuk pengguna. [Backup instance Coolify](https://coolify.io/docs/core/backup-and-recovery/instance-backup).
 
-File-level storage backup Coolify boleh menjadi lapisan tambahan, tetapi jangan menggantikan ZIP aplikasi konsisten dengan menyalin database SQLite aktif. Untuk CLBK, utamakan backup/restore aplikasinya yang juga memverifikasi bukti dan rekonsiliasi usaha.
+Backup database terjadwal milik resource MySQL Coolify boleh menjadi lapisan tambahan. Tetap pertahankan ZIP aplikasi yang juga menyimpan bukti privat dan merekonsiliasi angka usaha; backup SQL saja tidak menyertakan file bukti.
 
 ## 15. Restore data dengan aman
 
@@ -721,9 +760,9 @@ Aktifkan kembali dua scheduled task dan alarm, tunggu heartbeat, lalu jalankan d
 
 ### 15.3 Jika seluruh VPS rusak/hilang
 
-Siapkan VPS pengganti/Coolify, volume backup terpisah, domain, source commit yang cocok, APP_KEY aplikasi, konfigurasi runtime dan ZIP dari offsite. Ikuti bagian 3–8 **jalur B**, pada database target kosong. Jangan migrate/seed sebelum restore dan jangan membuat APP_KEY baru.
+Siapkan VPS pengganti/Coolify, resource MySQL 8.4 baru, volume backup terpisah, domain, source commit yang cocok, APP_KEY aplikasi, konfigurasi runtime dan ZIP dari offsite. Ikuti bagian 3–8 **jalur B**. Jalankan migrate untuk menyiapkan schema MySQL tujuan, tanpa seed/bootstrap sebelum restore. Gunakan APP_KEY sumber yang sama.
 
-Jika database lama rusak sehingga safety backup tidak dapat dibuat, gunakan lingkungan pengganti yang benar-benar baru dan pertahankan file lama untuk pemeriksaan. Jangan menghapus DB/WAL/SHM atau memaksa --new-server pada resource yang masih mempunyai data. Atur DNS ke server pengganti setelah hasil diterima dan hentikan server lama sebelum menerima transaksi, agar hanya ada satu penulis.
+Jika database lama rusak sehingga safety backup tidak dapat dibuat, gunakan lingkungan pengganti yang benar-benar baru dan pertahankan volume lama untuk pemeriksaan. Jangan menghapus volume MySQL atau memaksa --new-server pada resource yang masih mempunyai data. Atur DNS ke server pengganti setelah hasil diterima dan hentikan server lama sebelum menerima transaksi, agar hanya ada satu penulis.
 
 ## 16. Memastikan migrasi Windows dan Linux cocok
 
@@ -734,9 +773,9 @@ Bagian ini penting **sebelum membuat ZIP pindahan dari Windows**, karena manifes
 
 ```powershell
 Set-Location D:/Sites/CLBK
-git diff --exit-code HEAD -- database/migrations
+git diff --exit-code HEAD -- database/migrations database/schema/mysql-schema.sql
 if ($LASTEXITCODE -ne 0) { throw 'Tinjau dan commit perubahan migrasi sebelum melanjutkan' }
-git ls-files --others --exclude-standard -- database/migrations
+git ls-files --others --exclude-standard -- database/migrations database/schema/mysql-schema.sql
 ```
 
 Perintah terakhir tidak boleh menampilkan file migrasi belum terlacak. Dengan aturan .gitattributes proyek `eol=lf`, source Git Linux memakai LF. Jika worktree Windows masih CRLF, normalkan **hanya line ending** berkas migrasi setelah memastikan perubahan skema sudah bersih:
@@ -751,16 +790,17 @@ Get-ChildItem -LiteralPath database/migrations -Filter '*.php' -File | Sort-Obje
     $migrationHash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     '{0}  {1}' -f $migrationHash, $_.Name
 }
+Get-FileHash -LiteralPath database/schema/mysql-schema.sql -Algorithm SHA256
 ```
 
 3. Pada **TERMINAL APLIKASI** versi yang akan menerima restore:
 
 ```bash
 cd /var/www/html
-sha256sum database/migrations/*.php
+sha256sum database/migrations/*.php database/schema/mysql-schema.sql
 ```
 
-4. Cocokkan setiap nama file dan SHA256; abaikan perbedaan awalan path pada tampilan. Jika ada perbedaan lain, berhenti dan minta pengembang menyamakan source/commit. Jangan mengedit manifest backup atau mengubah skema untuk mengakali verifikasi.
+4. Cocokkan setiap nama file dan SHA256, termasuk `mysql-schema.sql`; abaikan perbedaan awalan path pada tampilan. Jika ada perbedaan lain, berhenti dan minta pengembang menyamakan source/commit. Jangan mengedit manifest backup atau mengubah skema untuk mengakali verifikasi.
 5. **Setelah** cocok, buat ZIP baru dari sumber yang sudah dihentikan inputnya, memakai langkah bagian 8B. Backup lama yang sudah memiliki fingerprint berbeda tidak berubah hanya karena berkas source diperbaiki.
 
 Untuk arsip historis, simpan snapshot source dengan byte migrasi aslinya bersama catatan rilis. Git saja tidak menggantikan arsip source asli bila backup terlanjur dibuat sebelum normalisasi. Proses ini tidak menjalankan migrasi baru dan tidak mengubah isi database.
@@ -818,7 +858,11 @@ Seed tambahan hanya dijalankan bila instruksi rilis memerlukannya. Jangan menjal
 | Email tidak masuk | Pada DigitalOcean gunakan port yang diizinkan seperti Brevo 2525; periksa SMTP login/key bukan API key, sender/domain SPF/DKIM, spam, dan status key provider. Jalankan email uji bulanan. |
 | Doctor: heartbeat terlambat | Scheduled Task harus enabled, container/command benar, Recent executions tidak gagal. Jangan menggandakan scheduler untuk memperbaikinya. |
 | Doctor: backup tua/tidak valid | Baca kegagalan backup, ruang disk dan keberadaan bukti. Buat backup baru hanya setelah sebab diperbaiki, lalu verify. Jangan menghapus bukti yang masih dirujuk. |
-| SQLite busy/locked | Periksa proses/backup tumpang tindih, beban dan latensi disk. Jangan menghapus WAL/SHM atau membuka SQLite melalui folder jaringan. Periksa riwayat sebelum mengulang submit transaksi. |
+| APP_ENV harus production | Isi APP_ENV=production pada Production Environment Variables aplikasi dan aktifkan Runtime Variable. File .env.production lokal tidak otomatis dibaca Coolify. Simpan lalu Redeploy. |
+| MySQL tidak dapat dihubungi | Pastikan resource MySQL healthy, DB_HOST memakai hostname Internal URL, port 3306, password normal user benar, serta aplikasi/database berada pada destination yang sama. |
+| Error 1419 saat migrasi | Jalankan SET PERSIST log_bin_trust_function_creators=ON melalui akun root pada terminal resource MySQL, lalu periksa migrasi. Jangan menghapus trigger untuk melewati error. |
+| MySQL deadlock/lock timeout | Koordinator mencoba ulang konflik 1205/1213 maksimal tiga kali. Periksa beban/operasi bersamaan dan riwayat transaksi sebelum submit ulang. Tetap gunakan idempotency key. |
+| Restore terhenti | Pertahankan maintenance dan hentikan worker. Periksa safety backup serta trigger MySQL dengan clbk:database-ready dan clbk:doctor sebelum artisan up. Restore melepas/memasang kembali trigger; proses tidak boleh dihentikan di tengah jalan. |
 | Disk penuh | Periksa host dan volume backup; backup manual/offsite/image/log bisa tumbuh. Arsipkan sesuai retensi setelah verifikasi. Jangan memakai docker system prune --volumes sembarangan. |
 | Cetak/PDF berbeda format | Buka halaman cetak laporan/voucher dahulu, periksa dialog PDF/printer dan ukuran kertas. Uji printer fisik yang benar. |
 | Lupa password manajer | Gunakan Lupa password setelah SMTP teruji. Bootstrap-user tidak membuat manajer kedua ketika users sudah berisi; jangan menghapus tabel user. |

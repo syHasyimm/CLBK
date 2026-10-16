@@ -30,8 +30,13 @@ class WriteTransaction
         for ($attempt = 1; $attempt <= $attempts; $attempt++) {
             $callbackCompleted = false;
             try {
-                // Laravel mengelola commit/rollback; konfigurasi SQLite memakai BEGIN IMMEDIATE.
+                // A single MySQL row lock preserves the serialized business-write boundary.
                 return $connection->transaction(function ($transaction) use ($callback, &$callbackCompleted) {
+                    if ($transaction->getDriverName() === 'mysql') {
+                        if ($transaction->table('database_write_locks')->where('id', 1)->lockForUpdate()->first() === null) {
+                            throw new LogicException('Mutex transaksi MySQL belum diinisialisasi. Jalankan migrasi.');
+                        }
+                    }
                     $result = $callback($transaction);
                     $callbackCompleted = true;
 
@@ -49,8 +54,10 @@ class WriteTransaction
                     $driverCode = $exception->getPrevious()->errorInfo[1] ?? $driverCode;
                 }
 
-                $sqliteCode = is_numeric($driverCode) ? ((int) $driverCode & 0xFF) : null;
-                if (! in_array($sqliteCode, [5, 6], true)) {
+                $retryable = $connection->getDriverName() === 'mysql'
+                    ? in_array((int) $driverCode, [1205, 1213], true)
+                    : in_array(is_numeric($driverCode) ? ((int) $driverCode & 0xFF) : null, [5, 6], true);
+                if (! $retryable) {
                     throw $exception;
                 }
 

@@ -60,6 +60,9 @@ class FinanceController extends Controller
             $query->where(fn ($q) => $q->where('m.name', 'like', '%'.$filters['q'].'%')->orWhere('m.code', 'like', '%'.$filters['q'].'%'));
         }
         $cards = $query->orderBy('m.name')->paginate(20)->withQueryString()->through(function ($row) use ($kind, $owner, $customer, $filters) {
+            foreach (['ticket_count', 'total_idr', 'paid_idr', 'remaining_idr'] as $field) {
+                $row->$field = (int) $row->$field;
+            }
             $row->last_payment = $kind->model()::where($owner, $row->id)->where('status', 'posted')->orderByDesc('occurred_at')->first(['id', 'number', 'amount_idr', 'occurred_at']);
             $preview = $this->entitlements($kind, $filters, true)->where($owner, $row->id);
             if ($customer) {
@@ -113,7 +116,7 @@ class FinanceController extends Controller
             }
 
             return Inertia::render('Finance/Payee', ['kind' => $kind->value, 'recipient' => $recipient->only(['id', 'code', 'name', 'is_active']),
-                'rows' => $rows, 'totals' => $totals, 'history' => $history, 'filters' => $filters,
+                'rows' => $rows, 'totals' => array_map('intval', (array) $totals), 'history' => $history, 'filters' => $filters,
                 'localNow' => app(BusinessClock::class)->local(app(BusinessClock::class)->now()), 'customerSettlement' => $settlement]);
         });
     }

@@ -2,7 +2,7 @@
 
 Workflow sederhana tahap 1–4 sudah diterapkan. Timbangan memilih konsumen, mobil, TBS/sortir, serta anggota; penjualan pabrik memakai berat bersih dan harga otomatis; penjualan sortir memakai berat dan harga manual. Satu kali simpan langsung membentuk transaksi sah. Penjualan pabrik dan sortir mencatat piutang; uang diterima dicatat sebagian/lunas melalui Penerimaan Penjualan dan menambah saldo akun kas/bank yang dipilih. Pembayaran konsumen dan gaji tetap terpisah. Muatan Mobil dan Stok Sortir sudah dihapus. Pengeluaran tidak memakai perjalanan, dan Dashboard/Laporan menyediakan ringkasan periode serta per mobil. Data Master dan histori tetap dipertahankan. Lihat [penerimaan penjualan pabrik dan sortir](docs/penerimaan-semua-penjualan.md), [rencana workflow](docs/rencana-workflow-sederhana.md), [hasil tahap 1](docs/workflow-sederhana-tahap-1.md), [hasil tahap 2](docs/workflow-sederhana-tahap-2.md), dan [hasil tahap 3–4](docs/workflow-sederhana-tahap-3-4.md).
 
-Sistem pengelolaan usaha sawit berbasis web menggunakan Laravel 13, Breeze, React + Inertia, SQLite, Tailwind 4, dan shadcn/ui. Aplikasi diakses melalui browser komputer maupun ponsel.
+Sistem pengelolaan usaha sawit berbasis web menggunakan Laravel 13, Breeze, React + Inertia, **MySQL 8.4 untuk produksi**, Tailwind 4, dan shadcn/ui. Aplikasi diakses melalui browser komputer maupun ponsel. Development lokal dan suite regresi cepat tetap dapat memakai SQLite.
 
 Implementasi saat ini mencakup fondasi web, identitas/master, harga/timbang, penjualan langsung, keuangan, serta **Tahap 5 PRD: Dashboard dan laporan**. Dashboard menyediakan tautan rincian sumber dan saldo utang konsumen/upah, piutang penjualan, serta arus kas per akun. Laporan menyediakan filter, rincian transaksi, CSV seluruh halaman, cetak/simpan PDF, dan audit manajer. Angka memakai dokumen sumber yang sama, dengan label Selisih transaksi periode. Hasil dan batas verifikasi tersedia pada [hasil tahap 5](docs/tahap-5.md). Tahap 5 pada rencana workflow sederhana adalah pemeriksaan akhir menyeluruh yang berbeda dari Tahap 5 PRD.
 
@@ -12,7 +12,7 @@ Tahap 6 mencakup backup/restore beserta retensi dan rekonsiliasi, pemeriksaan ke
 
 Pembayaran konsumen melunasi seluruh tiket belum lunas dalam satu pembayaran. `composer dev` menjalankan server dan Vite.
 
-Prasyarat: PHP **8.4+** dengan `pdo_sqlite`, `sqlite3`, `zip`, `mbstring`, `openssl`, `fileinfo`, dan `curl`; Composer 2; Node.js 22.12+ atau 24.
+Prasyarat lokal: PHP **8.4+** dengan `pdo_sqlite`, `sqlite3`, `zip`, `mbstring`, `openssl`, `fileinfo`, dan `curl`; Composer 2; Node.js 22.12+ atau 24. Produksi juga memerlukan `pdo_mysql`, klien MySQL, dan resource MySQL 8.4; Dockerfile menyertakan kebutuhan PHP/klien tersebut.
 
 ```powershell
 composer setup
@@ -22,7 +22,7 @@ composer dev
 
 Buka <http://127.0.0.1:8000>. Perintah akun awal meminta nama, email, dan kata sandi melalui terminal. Kata sandi disembunyikan saat diisi. Perintah ini hanya membuat satu **manajer aktif** ketika tabel pengguna masih kosong. Akun operasional tidak memakai kata sandi bawaan dan tidak ada pendaftaran publik. Manajer membuat akun tambahan melalui menu **Akun Pengguna**.
 
-`composer setup` memasang dependensi, menyiapkan `.env` dan database yang belum tersedia, menjalankan migrasi dan seed awal, lalu membuat build frontend. Pengulangan setup mempertahankan APP_KEY dan database yang sudah ada. Perintah ini untuk development lokal; produksi mengikuti [panduan deployment](docs/deployment.md).
+`composer setup` memasang dependensi, menyiapkan `.env` dan database yang belum tersedia, menjalankan migrasi dan seed awal, lalu membuat build frontend. Pengulangan setup mempertahankan APP_KEY dan database yang sudah ada. Perintah ini untuk development lokal; produksi MySQL mengikuti [panduan Coolify](DEPLOY.md).
 
 Untuk menjalankan aset hasil build tanpa Vite:
 
@@ -31,7 +31,7 @@ npm run build
 php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-Pengaturan server dan database disimpan di `.env`. SQLite hanya dibuka oleh Laravel pada satu server bersama. Browser mengakses server melalui HTTP(S) dan tidak membuka berkas database secara langsung.
+Pengaturan lokal disimpan di `.env`; produksi Coolify menggunakan runtime Environment Variables resource aplikasi. Produksi mengakses MySQL 8.4 pada jaringan privat, sedangkan `.env` lokal dapat tetap memakai SQLite. Browser hanya mengakses backend melalui HTTP(S).
 
 Email pengaturan ulang kata sandi memakai `MAIL_MAILER=log` pada development. Tautannya tercatat di `storage/logs/laravel.log`; pengiriman email nyata memerlukan konfigurasi mail server pada deployment.
 
@@ -127,7 +127,7 @@ php artisan clbk:doctor --json
 
 Restore hanya pada maintenance setelah service pemegang koneksi dihentikan, wajib membuat backup kondisi saat ini, lalu memeriksa hash seluruh tabel usaha/metrik/bukti. Sesi dan token lama dicabut; maintenance tetap aktif sampai operator selesai memeriksa. Opsi --new-server hanya menerima tujuan baru/kosong. Prosedur lengkap terdapat pada [backup/restore](docs/backup-restore.md).
 
-PHP/SQLite berjalan pada satu server bersama. Hasil simulasi restore, angka alur satu hari kerja, dan pemeriksaan yang masih diperlukan tercatat di [hasil tahap 6](docs/tahap-6.md). Ikuti [panduan Coolify](DEPLOY.md) untuk pemasangan, domain HTTPS, storage persisten, scheduler, dan backup offsite. Pengujian browser perangkat nyata, performa di Linux, dan aktivasi produksi tetap perlu dilakukan.
+Produksi memakai container PHP dan resource MySQL 8.4 terpisah pada Coolify. Catatan [tahap 6](docs/tahap-6.md) memuat verifikasi historis SQLite; konfigurasi produksi terbaru mengikuti [panduan Coolify](DEPLOY.md) dan [dukungan MySQL](docs/mysql-production.md). Pengujian browser perangkat nyata, performa di Linux, dan aktivasi produksi tetap perlu dilakukan.
 
 ## Struktur proyek
 
@@ -198,23 +198,25 @@ Komponen dasar berada di `resources/js/components/ui`: `Button`, `Input`, `Card`
 
 Jika menambahkan komponen, gunakan alias proyek dari konfigurasi tersebut. Fondasi menggunakan Tailwind 4 melalui plugin Vite; jangan menambahkan kembali konfigurasi PostCSS/Tailwind 3.
 
-## Transaksi SQLite
+## Transaksi database
 
-Konfigurasi koneksi menetapkan foreign key aktif, `journal_mode=WAL`, `synchronous=FULL`, waktu tunggu lock 5 detik, dan `transaction_mode=IMMEDIATE`. PHP 8.4+ diperlukan untuk jalur transaksi ini dalam framework yang terpasang.
+Pada SQLite development, koneksi menetapkan foreign key aktif, `journal_mode=WAL`, `synchronous=FULL`, waktu tunggu lock 5 detik, dan `transaction_mode=IMMEDIATE`. PHP 8.4+ diperlukan untuk jalur transaksi ini dalam framework yang terpasang.
 
 Gunakan `App\Support\Database\WriteTransaction` pada batas terluar use case yang mengubah saldo, stok, atau pembayaran:
 
 ```php
 $result = $transactions->run(function ($connection) {
     // Baca ulang saldo dan lakukan seluruh perubahan melalui koneksi ini.
-    // BEGIN IMMEDIATE sudah memperoleh write lock sebelum callback berjalan.
+    // Koordinator sudah memperoleh write lock sebelum callback berjalan.
     return $resultOfDatabaseChanges;
 });
 ```
 
 Contoh tersebut menunjukkan kontrak pemanggilan. Action master, akun, pengaturan, harga, perjalanan, timbang, penjualan, dan stok memakai koordinator yang sama. Koordinator menjalankan commit/rollback melalui Laravel dan mencoba ulang `SQLITE_BUSY`/`SQLITE_LOCKED` maksimal tiga kali. Ini juga mencakup konflik saat `BEGIN`, yang tidak dicoba ulang oleh `DB::transaction(..., 3)` pada framework yang diuji. Callback tidak boleh melakukan efek eksternal yang tidak dapat diulang. Gunakan `afterCommit` atau jalankan efek sekali sesudah transaksi kembali; kegagalan setelah callback selesai tidak mengulang perubahan yang mungkin telah commit. Konflik yang tetap terjadi menghasilkan `WriteConflict`; pengesahan dan pembalikan memakai idempotensi sesuai PRD.
 
-Koordinator tidak menerima pemanggilan di dalam transaksi yang sudah aktif. Gabungkan seluruh perubahan dalam satu use case dan satu koneksi. Database harus berada di disk lokal server; jangan letakkan SQLite di folder jaringan yang dibuka beberapa komputer.
+Pada MySQL, koordinator mengambil row lock singleton `database_write_locks` sebelum membaca saldo/data usaha dan mencoba ulang deadlock/timeout 1205/1213. Ini mempertahankan serialisasi penulisan yang sebelumnya disediakan BEGIN IMMEDIATE; throughput penulisan tetap satu transaksi usaha pada satu waktu.
+
+Koordinator tidak menerima pemanggilan di dalam transaksi yang sudah aktif. Gabungkan seluruh perubahan dalam satu use case dan satu koneksi. SQLite lokal tetap harus berada di disk lokal, sedangkan produksi memakai resource MySQL melalui network privat.
 
 Timestamp aplikasi tetap UTC. Zona waktu untuk tanggal operasional adalah `Asia/Jakarta` dari `config/clbk.php`.
 
@@ -233,5 +235,7 @@ composer validate --strict
 ```
 
 Jalankan build sebelum pengujian HTTP karena halaman Inertia menggunakan manifest Vite. Pengujian konkurensi memakai dua koneksi terhadap SQLite sementara berbasis berkas, bukan hanya database memory.
+
+Pengujian produksi MySQL memakai `php vendor/bin/phpunit --configuration phpunit.mysql.xml` dengan database lokal khusus tes. Persiapan, cakupan, dan pengamanan database tes tersedia di [dukungan MySQL](docs/mysql-production.md#pengujian-lokal).
 
 Lockfile Composer dan npm disertakan. `.env`, database operasional, cache dependensi, dan hasil build tidak dimasukkan ke version control.

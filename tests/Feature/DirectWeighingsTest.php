@@ -152,7 +152,7 @@ class DirectWeighingsTest extends TestCase
         foreach (['trips', 'sort_lots', 'sort_stock_movements', 'factory_returns', 'cash_entries', 'customer_payments', 'payroll_payments'] as $table) {
             $this->assertDatabaseCount($table, 0);
         }
-        $this->assertSame([], DB::select('PRAGMA foreign_key_check'));
+        $this->assertForeignKeysAreValid();
         $this->get(route('weighings.show', $ticket))->assertInertia(fn (Assert $p) => $p
             ->where('record.trip', null)->where('record.vehicle.plate_number', 'BK DIRECT')->where('record.payment_status', 'unpaid')->where('preview', null));
         $this->get(route('weighings.index'))->assertInertia(fn (Assert $p) => $p->has('weighings.data', 1)

@@ -9,7 +9,7 @@ final class BackupCreate extends Command
 {
     protected $signature = 'clbk:backup {--scheduled : Terapkan retensi cadangan terjadwal} {--reason=manual}';
 
-    protected $description = 'Cadangkan snapshot SQLite konsisten dan seluruh bukti privat';
+    protected $description = 'Cadangkan snapshot database konsisten dan seluruh bukti privat';
 
     public function handle(BackupService $backups): int
     {
