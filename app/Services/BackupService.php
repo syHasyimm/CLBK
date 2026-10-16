@@ -258,10 +258,21 @@ final class BackupService
                 throw new RuntimeException('Cadangan tidak boleh disimpan di direktori publik.');
             }
         }
-        if (app()->isProduction()) {
+        $privateDirectory = (string) config('filesystems.disks.local.root');
+        File::ensureDirectoryExists($privateDirectory, 0700);
+        $privateDirectory = str_replace('\\', '/', realpath($privateDirectory));
+        $comparableRoot = PHP_OS_FAMILY === 'Windows' ? strtolower($root) : $root;
+        $comparablePrivate = PHP_OS_FAMILY === 'Windows' ? strtolower($privateDirectory) : $privateDirectory;
+        $comparableRoot = rtrim($comparableRoot, '/').'/';
+        $comparablePrivate = rtrim($comparablePrivate, '/').'/';
+        if (str_starts_with($comparableRoot, $comparablePrivate)
+            || str_starts_with($comparablePrivate, $comparableRoot)
+            || (PHP_OS_FAMILY !== 'Windows' && stat($root)['dev'] === stat($privateDirectory)['dev'] && stat($root)['ino'] === stat($privateDirectory)['ino'])) {
+            throw new RuntimeException('Direktori cadangan harus terpisah dari penyimpanan privat aplikasi.');
+        }
+        if (app()->isProduction() && config('backups.require_separate_disk', true)) {
             if (DB::connection()->getDriverName() === 'mysql') {
-                $dataDirectory = (string) config('filesystems.disks.local.root');
-                File::ensureDirectoryExists($dataDirectory, 0700);
+                $dataDirectory = $privateDirectory;
             } else {
                 $database = $this->databasePath();
                 $dataDirectory = is_dir(dirname($database)) ? dirname($database) : database_path();

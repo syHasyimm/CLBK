@@ -1236,7 +1236,7 @@ Navigasi terbaru mengikuti workflow sederhana. Pada ponsel/tablet, supir memakai
 
 - Backup harian database dan storage bukti, serta backup sebelum upgrade.
 - Gunakan snapshot database yang konsisten/SQLite Backup API; jangan menyalin file utama database aktif tanpa menangani WAL dan konsistensinya. [SQLite Backup API](https://www.sqlite.org/backup.html)
-- Simpan backup di lokasi berbeda dari disk data utama; retention awal 7 harian dan 4 mingguan, dapat diatur manajer.
+- Simpan backup di lokasi berbeda dari disk data utama; retention awal 7 harian dan 4 mingguan, dapat diatur manajer. Pengecualian sesuai pilihan pemilik pada 16 Oktober 2026: VPS Hostinger boleh memakai folder backup lokal tersendiri dengan `BACKUP_REQUIRE_SEPARATE_DISK=false`. Backup harus privat dan persisten, terpisah dari folder bukti. Mode ini tidak melindungi kerusakan disk/VPS; salinan ke luar VPS tetap disarankan. Mode `true` mempertahankan kewajiban perangkat berbeda pada produksi.
 - Target awal: kehilangan data maksimal 24 jam dengan backup harian; pemulihan ≤ 2 jam setelah mesin pengganti tersedia, harus dibuktikan dengan simulasi restore.
 - Restore dilakukan dalam maintenance mode setelah backup kondisi sekarang, dengan pemeriksaan jumlah dokumen, saldo kas, utang, stok, dan akses bukti.
 - Deployment memakai web server produksi yang mendukung PHP 8.4+ sesuai runtime fondasi; development server bukan rancangan server produksi.
@@ -1370,9 +1370,9 @@ Status verifikasi: implementasi dan pemeriksaan otomatis selesai; pemeriksaan vi
 
 ### 17.8 Status tahap 6 PRD — 16 Oktober 2026
 
-Deployment memakai Coolify dengan Nginx + PHP-FPM 8.4 pada satu VPS. Browser komputer dan ponsel mengakses origin HTTPS yang sama. Source, secret runtime, storage data persisten, dan disk backup terpisah dijelaskan di DEPLOY.md.
+Deployment memakai Coolify dengan Nginx + PHP-FPM 8.4 pada satu VPS. Browser komputer dan ponsel mengakses origin HTTPS yang sama. Source, secret runtime, storage data persisten, serta folder backup lokal tersendiri untuk pilihan Hostinger terbaru dijelaskan di DEPLOY.md. Mode disk backup terpisah tetap tersedia lewat `BACKUP_REQUIRE_SEPARATE_DISK=true`.
 
-Backup menggabungkan snapshot SQLite konsisten yang menangani WAL dan bukti privat, manifest HMAC/SHA256, retensi default tujuh harian/empat mingguan yang dapat diubah manajer, jadwal harian, serta penolakan lokasi publik/volume produksi yang sama dengan database. Restore memerlukan maintenance, backup kondisi sekarang, kode migrasi yang cocok, dan rekonsiliasi seluruh tabel usaha, kas/utang/piutang/stok/harga snapshot/bukti. Sesi/reset token/remember token/cache dicabut dan audit restore ditambahkan. Mesin pengganti memakai opsi khusus yang menolak database nonkosong. Pemeriksaan clbk:doctor memantau integritas, kapasitas data, backup dan scheduler.
+Implementasi awal backup menggabungkan snapshot SQLite konsisten yang menangani WAL dan bukti privat, manifest HMAC/SHA256, retensi default tujuh harian/empat mingguan yang dapat diubah manajer, jadwal harian, serta penolakan lokasi publik. Pada konfigurasi produksi terbaru, pemeriksaan perangkat berbeda mengikuti `BACKUP_REQUIRE_SEPARATE_DISK`; mode lokal Hostinger memakai `false` sesuai bagian 15.3. Restore memerlukan maintenance, backup kondisi sekarang, kode migrasi yang cocok, dan rekonsiliasi seluruh tabel usaha, kas/utang/piutang/stok/harga snapshot/bukti. Sesi/reset token/remember token/cache dicabut dan audit restore ditambahkan. Mesin pengganti memakai opsi khusus yang menolak database nonkosong. Pemeriksaan clbk:doctor memantau integritas, kapasitas data, backup dan scheduler.
 
 Simulasi terisolasi sebelumnya memulihkan 33 tabel usaha dan bukti dengan checksum cocok dalam 0,066 detik pada dataset sintetis kecil. Tes tambahan mempertahankan piutang belum diterima dan histori stok bersaldo. Alur satu hari kerja sampai pelunasan hari berikutnya lulus melalui controller HTTP, dengan kas akhir Rp4.990.000 dan keuntungan periode −Rp10.000 tanpa biaya ganda.
 

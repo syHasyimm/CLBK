@@ -4,7 +4,11 @@ Produksi menggunakan MySQL 8.4. Cadangan ZIP berisi snapshot MySQL dari satu rea
 
 ## Lokasi dan hak akses
 
-Tetapkan BACKUP_PATH absolut di luar public dan repository. Pada produksi volumenya harus berbeda dari file privat aplikasi dan volume MySQL. Aplikasi memeriksa perangkat backup/file privat; perangkat serta kapasitas volume MySQL harus diperiksa pada resource/server database. Direktori hanya dapat dibaca/ditulis akun service dan pengelola backup. Arsip mengandung data pribadi serta hash password: enkripsi volume/offsite, batasi ACL, dan jangan mengunggah ke penyimpanan publik. APP_KEY disimpan terpisah di vault/backup secret yang aman; tidak dimasukkan ZIP. Mesin pengganti membutuhkan APP_KEY yang sama untuk verifikasi dan data terenkripsi.
+Tetapkan BACKUP_PATH absolut di luar public dan repository, terpisah dari folder bukti privat. Backup tidak boleh memakai folder yang sama, menjadi induk, atau berada di dalam folder bukti. Direktori hanya dapat dibaca/ditulis akun service dan pengelola backup. Arsip mengandung data pribadi serta hash password: enkripsi volume/offsite, batasi ACL, dan jangan mengunggah ke penyimpanan publik. APP_KEY disimpan terpisah di vault/backup secret yang aman; tidak dimasukkan ZIP. Mesin pengganti membutuhkan APP_KEY yang sama untuk verifikasi dan data terenkripsi.
+
+Pilihan Hostinger saat ini memakai **folder backup lokal tersendiri**, dengan `BACKUP_REQUIRE_SEPARATE_DISK=false`. Image Coolify dan templatenya sudah memakai mode ini. Mount host `/srv/clbk/backups` ke `/backups`; folder host lama seperti `/mnt/clbk-backups/archives` juga boleh dipertahankan. Mount `/data` dan `/backups` tetap wajib persisten dengan folder sumber berbeda. Backup boleh berada pada disk yang sama, tetapi ikut hilang jika disk/VPS rusak. Pengiriman ke luar VPS tidak otomatis disediakan oleh mode ini.
+
+Jika memilih `BACKUP_REQUIRE_SEPARATE_DISK=true`, pada produksi perangkat backup harus berbeda dari file privat aplikasi. Ini tetap menjadi default konfigurasi di luar image Coolify bila env tidak diisi. Perangkat serta kapasitas volume MySQL harus diperiksa pada resource/server database agar backup juga terpisah dari database. Pemisahan mount saja belum membuktikan adanya disk fisik berbeda.
 
 Manajer membuat/men-download cadangan pada Pengaturan Usaha dengan autentikasi ulang. Manajer mengatur jumlah harian (1–90) dan mingguan (1–52). Restore hanya melalui terminal pengelola server, bukan HTTP, agar service dapat dihentikan dengan benar. Akses terminal, lokasi ZIP, dan APP_KEY hanya untuk pengelola yang berwenang.
 

@@ -2,6 +2,7 @@
 
 return [
     'path' => env('BACKUP_PATH', storage_path('app/backups')),
+    'require_separate_disk' => env('BACKUP_REQUIRE_SEPARATE_DISK', true) !== false,
     'daily' => (int) env('BACKUP_KEEP_DAILY', 7),
     'weekly' => (int) env('BACKUP_KEEP_WEEKLY', 4),
     'time' => env('BACKUP_TIME', '23:00'),

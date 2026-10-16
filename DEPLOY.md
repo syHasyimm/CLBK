@@ -1,22 +1,22 @@
 # Deploy CLBK TOKE dengan Coolify untuk aplikasi web
 
-Panduan ini untuk pemilik usaha yang belum terbiasa deploy. Disesuaikan **16 Oktober 2026** untuk **Coolify + MySQL 8.4 dengan database awal kosong**, sesuai pilihan Anda. Dashboard Coolify, container aplikasi, dan resource MySQL terpisah berjalan pada satu VPS milik Anda. Bila Coolify sudah aktif, lanjut ke bagian 4 setelah memastikan server dan domainnya sesuai. Instruksi produksi SQLite pada catatan tahap sebelumnya sudah digantikan oleh panduan ini.
+Panduan ini untuk pemilik usaha yang belum terbiasa deploy. Disesuaikan **16 Oktober 2026** untuk **VPS Hostinger + Coolify + MySQL 8.4 dengan database awal kosong dan backup pada folder lokal tersendiri**, sesuai pilihan Anda. Dashboard Coolify, container aplikasi, dan resource MySQL terpisah berjalan pada satu VPS milik Anda. Bila Coolify sudah aktif, lanjut ke bagian 4 setelah memastikan server dan domainnya sesuai. Instruksi produksi SQLite pada catatan tahap sebelumnya sudah digantikan oleh panduan ini.
 
 Hasil akhirnya: satu alamat seperti **https://toke.namausaha.id**, diakses melalui browser komputer maupun ponsel. Semua memakai backend dan data usaha yang sama. Anda tidak perlu memasang PHP/database pada komputer pengguna atau HP. **Domain, server, dan akun Coolify produksi belum diberikan; panduan dan konfigurasi ini belum merupakan deployment yang sudah berjalan.**
 
-Urutan: siapkan VPS → pasang Coolify → hubungkan source → siapkan disk → isi konfigurasi → deploy → buat/pulihkan data → aktifkan backup → uji browser komputer/ponsel.
+Urutan: siapkan VPS → pasang Coolify → hubungkan source → siapkan folder persisten → isi konfigurasi → deploy → buat/pulihkan data → aktifkan backup → uji browser komputer/ponsel.
 
 Bagian yang sering dibuka kembali: [pengaturan Coolify](#7-buat-aplikasi-coolify-dan-isi-konfigurasi), [akses komputer dan HP](#12-buka-aplikasi-di-browser-komputer-dan-hp), [backup](#14-backup-harian-offsite-dan-backup-dashboard), [restore](#15-restore-data-dengan-aman), [update](#17-cara-update-aplikasi-berikutnya), dan [pemecahan masalah](#18-masalah-yang-sering-muncul).
 
 ## 1. Saran server dan biaya
 
-Saya menyarankan satu VPS Linux **Ubuntu 24.04 LTS x64**, Coolify self-hosted, satu domain usaha, dan volume backup terpisah. Nginx + PHP-FPM 8.4 berjalan **di dalam container**, sehingga tidak perlu dipasang secara manual pada sistem operasi VPS. Coolify mengurus pintu masuk HTTPS dan sertifikatnya.
+Gunakan VPS Hostinger yang Anda pilih, dengan Linux **Ubuntu 24.04 LTS x64**, Coolify self-hosted, satu domain usaha, dan folder backup lokal tersendiri. Nginx + PHP-FPM 8.4 berjalan **di dalam container**, sehingga tidak perlu dipasang secara manual pada sistem operasi VPS. Coolify mengurus pintu masuk HTTPS dan sertifikatnya.
 
 | Kebutuhan | Saran | Penjelasan sederhana |
 |---|---|---|
 | VPS utama | 4 vCPU, RAM 8 GiB, SSD 160 GiB | Ruang untuk Coolify, aplikasi, dan proses build |
 | Alternatif lebih hemat | 2 vCPU, RAM 4 GiB, SSD 80 GiB | Perlu pantau RAM saat build; tambah kapasitas jika sering kehabisan memori |
-| Volume tambahan | 50 GiB pada VPS yang sama | Disk berbeda khusus ZIP backup |
+| Folder backup lokal | /srv/clbk/backups | Folder tersendiri pada disk VPS; volume tambahan opsional |
 | Domain aplikasi | toke.namausaha.id | Diisikan pada semua perangkat pengguna |
 | Domain dashboard | panel.namausaha.id | Khusus pengelola Coolify |
 | Email transaksi | SMTP, misalnya Brevo | Agar lupa password benar-benar mengirim email |
@@ -24,7 +24,7 @@ Saya menyarankan satu VPS Linux **Ubuntu 24.04 LTS x64**, Coolify self-hosted, s
 
 Ukuran ini saran awal, bukan hasil uji kapasitas aplikasi produksi. Coolify sendiri mempunyai kebutuhan minimum; build dan aplikasi memerlukan sumber daya tambahan. [Persyaratan Coolify](https://coolify.io/docs/start-with-self-hosted).
 
-Contoh penyedia: DigitalOcean, lokasi **Singapore/SGP1** agar dekat dengan pengguna Indonesia. Pada paket Basic Regular saat diperiksa, VPS 8 GiB/4 vCPU/160 GiB **US$48/bulan**, atau 4 GiB/2 vCPU/80 GiB **US$24/bulan**. Volume 50 GiB sekitar **US$5/bulan**. Total awal sekitar **US$53/bulan**, atau **US$29/bulan** pada pilihan hemat, sebelum domain, kurs, pajak, email, jasa teknisi dan penyimpanan offsite. Spaces Standard opsional mulai US$5/bulan. Periksa harga checkout sebelum membeli. [Harga VPS](https://www.digitalocean.com/pricing/droplets), [volume](https://docs.digitalocean.com/products/volumes/details/pricing/), [Spaces](https://docs.digitalocean.com/products/spaces/details/pricing/).
+Tidak perlu membeli volume tambahan untuk mode folder lokal ini. Pilih kapasitas sesuai kebutuhan dan pantau ruang untuk database, bukti, build, log, serta arsip. Hostinger menjelaskan penambahan resource dilakukan melalui upgrade paket VPS; upgrade kapasitas belum membuktikan adanya disk backup terpisah. Periksa biaya pada akun Anda sebelum membeli upgrade. [Upgrade VPS Hostinger](https://www.hostinger.com/support/1583229-how-to-upgrade-a-vps-server-at-hostinger/).
 
 Coolify self-hosted menggunakan VPS Anda. Coolify Cloud mengelola dashboard untuk Anda, tetapi server aplikasi tetap diperlukan; biaya/penyiapannya berbeda. Panduan ini memakai jalur self-hosted agar langkahnya satu alur. Bantuan satu kali teknisi Linux berguna untuk pemasangan disk dan latihan pemulihan; akun domain/VPS dan kunci tetap Anda pegang.
 
@@ -41,7 +41,7 @@ Browser komputer / browser ponsel
             |
    container Nginx + PHP-FPM
        |                |
- data usaha       disk backup terpisah
+ data usaha       folder backup lokal
  persisten              |
                   salinan di luar VPS
 ```
@@ -142,50 +142,64 @@ Hasil harus IP VPS. Tunggu pembaruan DNS bila belum sesuai. Pada pengaturan inst
 
 Untuk domain resource aplikasi, Coolify menerbitkan/memperbarui sertifikat saat menggunakan https:// dan DNS/port benar. Sertifikat HTTPS ini mengamankan koneksi browser pengguna. [Domain Coolify](https://coolify.io/docs/core/networking/domains).
 
-## 5. Siapkan disk data dan backup persisten
+## 5. Siapkan folder data dan backup persisten
 
-### 5.1 Tambahkan volume backup
+### 5.1 Hostinger: buat dua folder lokal
 
-Pada panel VPS, buat volume misalnya 50 GiB di lokasi yang sama, attach ke VPS ini, lalu pilih format/mount otomatis **hanya untuk volume baru yang memang kosong**. Catat mount path dari panel; contoh `/mnt/volume_sgp1_01`.
-
-**SERVER:**
-
-```bash
-lsblk -f
-df -h
-findmnt -T /mnt/volume_sgp1_01
-```
-
-Pastikan volume benar-benar terpasang dan tetap mount setelah reboot sesuai petunjuk penyedia. Jangan memformat disk yang sudah berisi data. [Pembuatan volume DigitalOcean](https://docs.digitalocean.com/products/volumes/how-to/create/).
-
-Panduan memakai `/mnt/clbk-backups`. Jika mount sebenarnya berbeda, buat alias ini **hanya bila /mnt/clbk-backups belum ada**, setelah memverifikasi target:
-
-```bash
-ln -s /mnt/volume_sgp1_01 /mnt/clbk-backups
-```
-
-Ganti target sesuai mount yang ditemukan. Bila /mnt/clbk-backups sudah menjadi mount yang benar, tidak perlu symlink. Jangan menimpa direktori/link yang belum diperiksa.
-
-### 5.2 Buat folder host
+Mode yang dipilih menggunakan dua folder tersendiri pada VPS yang sama. Folder boleh berada pada disk yang sama. Tidak perlu memformat disk atau mengubah partisi.
 
 **SERVER:**
 
 ```bash
 install -d -o 33 -g 33 -m 750 /srv/clbk/data
-install -d -o 33 -g 33 -m 700 /mnt/clbk-backups/archives
-findmnt -T /srv/clbk/data
-findmnt -T /mnt/clbk-backups/archives
-stat -c '%d %n' /srv/clbk/data /mnt/clbk-backups/archives
+install -d -o 33 -g 33 -m 700 /srv/clbk/backups
+ls -ld /srv/clbk/data /srv/clbk/backups
+df -h /srv/clbk/data /srv/clbk/backups
 ```
 
-UID/GID 33 adalah www-data di image PHP yang disediakan. Dua angka perangkat hasil stat **harus berbeda**. Bila sama, volume belum benar; jangan lanjut. Dua named volume Docker yang sama-sama disimpan pada disk sistem tidak memenuhi syarat backup proyek ini.
+UID/GID 33 adalah www-data di image PHP yang disediakan. Dua folder harus berbeda; backup tidak boleh berada di dalam folder bukti privat atau folder publik. Angka perangkat/disk yang sama diperbolehkan pada mode lokal.
 
 | Di server/host | Di dalam container | Isi |
 |---|---|---|
 | /srv/clbk/data | /data | Proofs, storage/runtime/log aplikasi |
-| /mnt/clbk-backups/archives | /backups | ZIP backup pada disk berbeda |
+| /srv/clbk/backups | /backups | ZIP backup pada folder lokal tersendiri |
 
-Entrypoint membuat folder file privat/runtime. Data MySQL berada di persistent storage resource MySQL pada `/var/lib/mysql`, bukan di `/data` aplikasi. Pastikan volume MySQL berada pada disk utama/data dan backup pada disk berbeda. **Jangan mount seluruh /var/www/html**: kode/vendor/aset berada di image. Jangan membuat storage:link untuk bukti; file bukti bersifat privat.
+Entrypoint membuat folder file privat/runtime. Data MySQL berada di persistent storage resource MySQL pada `/var/lib/mysql`, bukan di `/data` aplikasi. **Jangan mount seluruh /var/www/html**: kode/vendor/aset berada di image. Jangan membuat storage:link untuk bukti; file bukti bersifat privat.
+
+Jika sebelumnya sudah membuat folder `/mnt/clbk-backups/archives` dan memasangnya ke `/backups`, folder tersebut boleh tetap digunakan. Tidak perlu memindahkan atau menghapus arsip hanya untuk mengganti nama folder. Source Path pada Coolify harus mengarah ke folder yang benar-benar Anda gunakan.
+
+### 5.2 Aktifkan mode folder lokal
+
+Pada **resource aplikasi CLBK → Environment Variables → Production**, gunakan Runtime Variable:
+
+```dotenv
+BACKUP_PATH=/backups
+BACKUP_REQUIRE_SEPARATE_DISK=false
+```
+
+Default Dockerfile dan template Coolify sudah memakai mode ini. Pengaturan `false` menerima backup pada disk yang sama, tetapi tetap mewajibkan dua mount persisten dan folder sumber yang berbeda. Aplikasi juga menolak folder backup yang sama, berada di dalam, atau menjadi induk folder bukti privat; pemeriksaan direktori publik, kapasitas, autentikasi, dan integritas arsip tetap berlaku. Mengisi env saja tidak memasang storage: tambahkan kedua mount sesuai bagian 7.2.
+
+Backup lokal membantu pemulihan kesalahan aplikasi/data. Jika disk atau seluruh VPS rusak, data dan backup lokal dapat hilang bersama. Salinan ke luar VPS tetap disarankan pada bagian 14; mode ini tidak mengunggah backup ke luar VPS secara otomatis.
+
+### 5.3 Opsional: backup pada disk terpisah
+
+Jika nanti tersedia storage backup terpisah, pasang pada host sesuai petunjuk penyedia dan buat folder arsip berizin UID/GID 33, mode 700. Pastikan disk terpasang kembali setelah reboot. Jangan memformat disk yang sudah berisi data.
+
+Periksa lokasi data dan backup melalui `findmnt -T` serta `lsblk -f`. Ganti Source Directory mount `/backups` ke folder pada storage tersebut, lalu ubah runtime env menjadi `BACKUP_REQUIRE_SEPARATE_DISK=true`. Pada mode ini perangkat backup dan `/data` harus berbeda; pastikan volume MySQL juga berada di disk data yang berbeda dari backup. Dua folder atau dua named volume Docker pada disk yang sama tidak memenuhi mode ini. Di luar image Coolify, konfigurasi aplikasi tetap memakai `true` bila env tidak diisi.
+
+### 5.4 Hostinger: error perangkat backup sama
+
+Pesan `Backup harus menggunakan perangkat disk berbeda dari penyimpanan privat aplikasi.` pada image lama berarti kedua mount sudah terpasang, tetapi pemeriksaan disk masih mewajibkan perangkat berbeda.
+
+Untuk mode lokal yang sekarang dipilih:
+
+1. Commit dan push perubahan Dockerfile, entrypoint, config backup, dan BackupService ke branch yang dipakai Coolify.
+2. Isi `BACKUP_REQUIRE_SEPARATE_DISK=false` sebagai Production Runtime Variable, lalu simpan. Jangan memakai Build Variable untuk pengaturan ini.
+3. Pastikan mount `/data` dan `/backups` memakai folder sumber yang berbeda dan tetap persisten, sesuai bagian 7.2.
+4. Klik **Redeploy** dan pastikan Deployment Logs memakai commit baru. Image lama belum mengenali pengaturan mode lokal; restart image lama saja tidak memperbaikinya. Perubahan mount juga membutuhkan container baru. [Bind mount Coolify](https://coolify.io/docs/core/persistent-storage/storage-mounts/bind-mounts), [penerapan volume mount](https://coolify.io/docs/core/persistent-storage/storage-mounts/volume-mounts).
+5. Setelah database/akun siap, buat dan verifikasi backup sesuai bagian 9. Backup lokal harus berhasil sebelum aplikasi dipakai untuk transaksi.
+
+Sebagai lapisan tambahan, Hostinger menyediakan backup VPS yang disimpan terpisah dari server. Pengaturannya ada di **hPanel → VPS → Manage → Backups & Monitoring → Snapshots & Backups → Manage Schedule**; backup harian dapat memerlukan pembelian tambahan. Backup VPS ini tidak memasang `/backups`. Tetap uji pemulihan arsip aplikasi agar database dan bukti dapat direkonsiliasi. [Backup VPS Hostinger](https://www.hostinger.com/support/1583232-how-to-back-up-or-restore-a-vps-at-hostinger/).
 
 ## 6. Siapkan source di GitHub private
 
@@ -195,7 +209,7 @@ Konfigurasi deployment sudah disediakan pada proyek ini:
 
 | Berkas | Fungsi |
 |---|---|
-| deploy/coolify/Dockerfile | PHP 8.4 + build aset Node 24 + Nginx/PHP-FPM |
+| Dockerfile | PHP 8.4 + build aset Node 24 + Nginx/PHP-FPM |
 | deploy/coolify/entrypoint.sh | Memeriksa mount/env dan menyiapkan runtime; tidak auto-migrate/seed |
 | deploy/coolify/nginx.conf | Web root public/, port internal 8080, pembatasan file sensitif |
 | deploy/coolify/php.ini dan php-fpm.conf | Batas upload/memori dan worker PHP |
@@ -209,7 +223,7 @@ Cara mudah memakai GitHub Desktop:
 2. Periksa daftar perubahan dan sertakan seluruh source aplikasi yang memang akan dirilis, lockfile, deployment, serta DEPLOY.md. Jangan hanya mengirim folder deploy jika fitur aplikasi masih belum di-commit.
 3. Pastikan tidak ada .env asli, database SQLite, file bukti usaha, ZIP backup, private key, auth.json, atau credentials.json dalam perubahan yang akan dipublish. .env.example/.env.production.example boleh sebagai template tanpa secret.
 4. Commit dengan pesan yang jelas, lalu Publish/Push ke repository **private**. Jangan memilih public untuk source usaha ini.
-5. Catat branch, misalnya main, dan commit rilis. Pastikan deploy/coolify/Dockerfile terlihat di GitHub.
+5. Catat branch, misalnya main, dan commit rilis. Pastikan Dockerfile pada root repository terlihat di GitHub.
 
 Anda dapat memeriksa daftar file, tanpa mencetak isi secret:
 
@@ -264,7 +278,7 @@ Isi pengaturan berikut. Nama menu dapat sedikit berbeda antarrilis Coolify.
 | Pengaturan | Nilai |
 |---|---|
 | Base Directory | / |
-| Dockerfile Location | /deploy/coolify/Dockerfile |
+| Dockerfile Location | /Dockerfile |
 | Docker build context | Root repository; jangan deploy/coolify saja |
 | Build Stage/Target | runtime, atau kosong untuk stage terakhir |
 | Ports Exposes/internal port | 8080 |
@@ -283,9 +297,9 @@ Pada resource aplikasi → **Persistent Storage/Storages**, buat Directory Mount
 | Mount | Source Path pada server | Destination Path container |
 |---|---|---|
 | Data | /srv/clbk/data | /data |
-| Backup | /mnt/clbk-backups/archives | /backups |
+| Backup | /srv/clbk/backups | /backups |
 
-Simpan dan periksa kembali kedua path. Container menolak start bila mount belum terpasang atau perangkat data/backup sama. Redeploy harus memakai source path yang sama. Jangan menghapus Directory Mount lewat dialog yang ikut menghapus isi folder host. [Persistent storage Coolify](https://coolify.io/docs/applications/configuration/persistent-storage), [bind mount](https://coolify.io/docs/core/persistent-storage/storage-mounts/bind-mounts).
+Simpan dan periksa kembali kedua path. Container menolak start bila mount belum terpasang atau kedua mount memakai folder sumber yang sama. Pada mode lokal (`BACKUP_REQUIRE_SEPARATE_DISK=false`), disk yang sama diperbolehkan. Jika memilih `true`, disk data/backup harus berbeda. Redeploy harus memakai source path yang sama. Mount backup lama dengan source `/mnt/clbk-backups/archives` boleh dipertahankan jika itulah folder arsip Anda. Jangan menghapus Directory Mount lewat dialog yang ikut menghapus isi folder host. [Persistent storage Coolify](https://coolify.io/docs/applications/configuration/persistent-storage), [bind mount](https://coolify.io/docs/core/persistent-storage/storage-mounts/bind-mounts).
 
 ### 7.3 Siapkan SMTP
 
@@ -368,6 +382,7 @@ MAIL_PASSWORD=ISI_SMTP_KEY
 MAIL_FROM_ADDRESS=ISI_EMAIL_PENGIRIM_TERVERIFIKASI
 MAIL_FROM_NAME="CLBK TOKE"
 BACKUP_PATH=/backups
+BACKUP_REQUIRE_SEPARATE_DISK=false
 BACKUP_KEEP_DAILY=7
 BACKUP_KEEP_WEEKLY=4
 BACKUP_TIME=23:00
@@ -439,7 +454,7 @@ php artisan clbk:backup --reason=go-live
 
 Setelah down, pastikan request/worker sumber yang sudah berjalan benar-benar selesai sebelum membuat ZIP final. Bila masih ada penulis lain, hentikan lebih dahulu lalu buat backup lagi. Jangan menerima transaksi baru pada sumber selama perpindahan.
 
-Cari ZIP pada BACKUP_PATH .env sumber; default lokal bila tidak ditentukan adalah storage/app/backups. Semua bukti sumber harus tersedia. Pada konfigurasi production, path backup sumber juga wajib pada perangkat berbeda. Jika perlu mengganti BACKUP_PATH lokal, isi path absolut privat dan config:clear sebelum membuat backup.
+Cari ZIP pada BACKUP_PATH .env sumber; default lokal bila tidak ditentukan adalah storage/app/backups. Semua bukti sumber harus tersedia. Pada konfigurasi production, mode disk terpisah diperiksa bila `BACKUP_REQUIRE_SEPARATE_DISK=true`; mode `false` menerima folder lokal tersendiri. Jika perlu mengganti BACKUP_PATH lokal, isi path absolut privat dan config:clear sebelum membuat backup.
 
 Verifikasi dan kirim ZIP, ganti path/nama sebenarnya:
 
@@ -760,7 +775,7 @@ Aktifkan kembali dua scheduled task dan alarm, tunggu heartbeat, lalu jalankan d
 
 ### 15.3 Jika seluruh VPS rusak/hilang
 
-Siapkan VPS pengganti/Coolify, resource MySQL 8.4 baru, volume backup terpisah, domain, source commit yang cocok, APP_KEY aplikasi, konfigurasi runtime dan ZIP dari offsite. Ikuti bagian 3–8 **jalur B**. Jalankan migrate untuk menyiapkan schema MySQL tujuan, tanpa seed/bootstrap sebelum restore. Gunakan APP_KEY sumber yang sama.
+Siapkan VPS pengganti/Coolify, resource MySQL 8.4 baru, folder backup persisten sesuai mode yang dipilih, domain, source commit yang cocok, APP_KEY aplikasi, konfigurasi runtime dan ZIP dari offsite. Ikuti bagian 3–8 **jalur B**. Jalankan migrate untuk menyiapkan schema MySQL tujuan, tanpa seed/bootstrap sebelum restore. Gunakan APP_KEY sumber yang sama.
 
 Jika database lama rusak sehingga safety backup tidak dapat dibuat, gunakan lingkungan pengganti yang benar-benar baru dan pertahankan volume lama untuk pemeriksaan. Jangan menghapus volume MySQL atau memaksa --new-server pada resource yang masih mempunyai data. Atur DNS ke server pengganti setelah hasil diterima dan hentikan server lama sebelum menerima transaksi, agar hanya ada satu penulis.
 
@@ -845,7 +860,7 @@ Seed tambahan hanya dijalankan bila instruksi rilis memerlukannya. Jangan menjal
 | Build berhenti karena memori | Periksa RAM/disk VPS dan Deployment Logs; hindari build bersamaan, tambah kapasitas bila perlu. Jangan menghapus data/volume untuk mengosongkan ruang. |
 | Repository bisa dibuka di laptop tetapi Coolify gagal clone | Periksa izin GitHub App/deploy key ke repository private dan branch yang dipilih. |
 | File/fitur lokal tidak muncul setelah deploy | Commit/push source yang belum terkirim; cocokkan commit pada Deployment Logs. |
-| Container gagal start: mount/perangkat sama | Periksa dua Directory Mount, mount volume pada host, dan stat di bagian 5. Dua volume Docker pada satu disk belum cukup. |
+| Container gagal start: mount/perangkat sama | Periksa dua mount dengan folder sumber berbeda. Untuk backup lokal Hostinger, gunakan BACKUP_REQUIRE_SEPARATE_DISK=false dan image baru sesuai bagian 5.4. Jika true, disk backup harus terpisah. |
 | 502/Bad Gateway | Periksa container running, port internal 8080, domain target, proxy dan health check. Port FPM 9000 bukan port HTTP. |
 | 503 sesudah deploy pertama | Maintenance awal memang aktif; selesaikan jalur A/B lalu artisan up. Sesudah update/restore, buka hanya setelah diverifikasi. |
 | Healthz sehat tetapi aplikasi error | Healthz hanya memeriksa Nginx/FPM. Periksa runtime env, log Laravel, /up dan doctor; pastikan migrasi telah dijalankan pada jalur A atau restore sukses pada B. |

@@ -37,6 +37,7 @@ ENV APP_ENV=production \
     DB_PORT=3306 \
     CLBK_PRIVATE_STORAGE=/data/proofs \
     BACKUP_PATH=/backups \
+    BACKUP_REQUIRE_SEPARATE_DISK=false \
     XDG_CONFIG_HOME=/data/storage/app/config \
     XDG_CACHE_HOME=/data/storage/framework/cache
 COPY --from=php-dependencies /var/www/html /var/www/html

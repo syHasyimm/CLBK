@@ -35,10 +35,24 @@ for target in /data /backups; do
     fi
 done
 
-if [ "$(stat -c %d /data)" = "$(stat -c %d /backups)" ]; then
-    echo 'Backup harus menggunakan perangkat disk berbeda dari penyimpanan privat aplikasi.' >&2
+if [ /data -ef /backups ]; then
+    echo 'Mount /data dan /backups harus memakai folder sumber berbeda.' >&2
     exit 1
 fi
+
+case "${BACKUP_REQUIRE_SEPARATE_DISK:-true}" in
+    true)
+        if [ "$(stat -c %d /data)" = "$(stat -c %d /backups)" ]; then
+            echo 'Backup harus menggunakan perangkat disk berbeda. Untuk folder backup lokal, gunakan BACKUP_REQUIRE_SEPARATE_DISK=false.' >&2
+            exit 1
+        fi
+        ;;
+    false) ;;
+    *)
+        echo 'BACKUP_REQUIRE_SEPARATE_DISK harus bernilai true atau false.' >&2
+        exit 1
+        ;;
+esac
 
 for directory in \
     /data/proofs /data/storage /data/storage/app \

@@ -44,7 +44,7 @@ class BackupRestoreTest extends TestCase
         File::ensureDirectoryExists($this->directory);
         touch($this->directory.'/live.sqlite');
         config(['database.connections.sqlite.database' => $this->directory.'/live.sqlite',
-            'backups.path' => $this->directory.'/backups', 'backups.minimum_free_bytes' => 0,
+            'backups.path' => $this->directory.'/backups', 'backups.minimum_free_bytes' => 0, 'backups.require_separate_disk' => true,
             'filesystems.disks.local.root' => $this->directory.'/private',
             'app.maintenance.driver' => 'cache', 'app.maintenance.store' => 'array', 'session.driver' => 'database']);
         DB::purge();
@@ -308,6 +308,8 @@ class BackupRestoreTest extends TestCase
 
     public function test_backup_rejects_public_directories_and_same_volume_in_production(): void
     {
+        $this->app['env'] = 'production';
+        config(['backups.require_separate_disk' => false]);
         $this->app->usePublicPath($this->directory.'/public');
         File::ensureDirectoryExists(public_path());
         foreach ([public_path('backups'), $this->directory.'/public-disk/backups'] as $path) {
@@ -320,10 +322,46 @@ class BackupRestoreTest extends TestCase
                 $this->assertStringContainsString('publik', $error->getMessage());
             }
         }
-        $this->app['env'] = 'production';
-        config(['backups.path' => $this->directory.'/backups']);
+        config(['backups.path' => $this->directory.'/backups', 'backups.require_separate_disk' => true]);
         $this->expectExceptionMessage('volume berbeda');
         app(BackupService::class)->listing();
+    }
+
+    public function test_local_folder_backup_can_be_verified_and_restored_in_production(): void
+    {
+        $this->app['env'] = 'production';
+        config(['backups.require_separate_disk' => false]);
+        $proof = $this->proof();
+        $service = app(BackupService::class);
+        $backup = $service->create();
+        $archive = $service->path($backup['id']);
+        $this->assertSame($backup['state'], $service->verify($archive)['state']);
+        $this->assertSame($backup['id'], $service->listing()[0]['id']);
+        $name = $this->manager->name;
+        $this->manager->update(['name' => 'Changed after local backup']);
+        $this->app->maintenanceMode()->activate(['time' => time()]);
+        $restored = $service->restore($archive);
+        $this->assertSame($backup['state'], $restored['state']);
+        $this->assertSame($name, $this->manager->fresh()->name);
+        $this->assertNotNull($restored['safety_backup_id']);
+        $this->assertFileExists($service->path($restored['safety_backup_id']));
+        Storage::disk('local')->assertExists($proof);
+        $this->assertTrue($this->app->isDownForMaintenance());
+    }
+
+    public function test_local_backup_folder_must_not_overlap_private_storage(): void
+    {
+        $this->app['env'] = 'production';
+        config(['backups.require_separate_disk' => false]);
+        foreach ([$this->directory.'/private', $this->directory.'/private/backups', $this->directory] as $path) {
+            config(['backups.path' => $path]);
+            try {
+                app(BackupService::class)->listing();
+                $this->fail('Backup folder overlaps private storage.');
+            } catch (RuntimeException $error) {
+                $this->assertStringContainsString('Direktori cadangan harus terpisah', $error->getMessage());
+            }
+        }
     }
 
     public function test_signed_path_traversal_and_mismatched_migration_release_are_rejected(): void

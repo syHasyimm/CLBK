@@ -14,7 +14,7 @@ Target deployment: **Coolify pada Linux, Nginx + PHP-FPM**, satu server SQLite, 
 | Deployment | Dockerfile PHP 8.4, build frontend, Nginx/PHP-FPM, pemeriksaan mount dan runtime env | Docker Engine tidak tersedia saat penyusunan; image belum diuji build/run penuh |
 | Monitoring | clbk:doctor --json dan script ping monitor; pengecekan DB, backup, disk dan heartbeat | Penerima alarm, dashboard check dan kapasitas backup/offsite harus dikonfigurasi |
 
-Kode aplikasi berada pada image, sedangkan data dan runtime disimpan pada mount persisten. Backup produksi wajib pada perangkat disk berbeda dari database. Dua volume Docker yang disimpan pada satu disk host belum memenuhi persyaratan tersebut.
+Kode aplikasi berada pada image, sedangkan data dan runtime disimpan pada mount persisten. Sesuai pilihan Hostinger terbaru, image Coolify memakai folder backup lokal tersendiri dengan `BACKUP_REQUIRE_SEPARATE_DISK=false`; mount `/data` dan `/backups` tetap wajib memakai folder sumber berbeda. Mode disk terpisah tersedia dengan nilai `true`. Backup lokal tidak melindungi kerusakan disk atau hilangnya VPS; salinan ke luar VPS tetap disarankan dan tidak dikirim otomatis oleh mode lokal ini.
 
 ## Pemakaian manajer dan operator
 

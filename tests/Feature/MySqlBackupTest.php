@@ -36,7 +36,7 @@ class MySqlBackupTest extends TestCase
     public function test_signed_mysql_backup_restores_cash_users_and_security_guards(): void
     {
         $directory = sys_get_temp_dir().'/clbk-mysql-backup-'.Str::uuid();
-        config(['backups.path' => $directory, 'backups.minimum_free_bytes' => 0, 'session.driver' => 'database']);
+        config(['backups.path' => $directory, 'backups.minimum_free_bytes' => 0, 'backups.require_separate_disk' => false, 'session.driver' => 'database']);
         Storage::fake('local');
         config(['filesystems.disks.local.root' => Storage::disk('local')->path('')]);
         $this->seed();
@@ -58,6 +58,7 @@ class MySqlBackupTest extends TestCase
             'storage_path' => $proofPath, 'original_name' => 'bukti.pdf', 'mime_type' => 'application/pdf',
             'size_bytes' => strlen($proof), 'uploaded_by' => $manager->id, 'created_at' => now()]);
         DB::table('sessions')->insert(['id' => 'old-session', 'user_id' => $manager->id, 'payload' => 'old', 'last_activity' => time()]);
+        $this->app['env'] = 'production';
         $service = app(BackupService::class);
         try {
             $backup = $service->create();

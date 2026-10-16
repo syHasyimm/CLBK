@@ -117,7 +117,7 @@ Seluruh **227 tes PHP (4.849 assertions)**, build frontend/TypeScript, Pint, dan
 
 ## Tahap 6 — Deployment dan operasional
 
-Pada **Pengaturan Usaha**, manajer mengatur retensi cadangan dan membuat/men-download ZIP database beserta bukti privat dengan autentikasi ulang. Default tujuh harian/empat mingguan, backup harian pukul 23.00 WIB; scheduler server wajib diaktifkan. BACKUP_PATH produksi harus privat dan pada volume berbeda dari database. APP_KEY dipertahankan serta disimpan terpisah dari ZIP.
+Pada **Pengaturan Usaha**, manajer mengatur retensi cadangan dan membuat/men-download ZIP database beserta bukti privat dengan autentikasi ulang. Default tujuh harian/empat mingguan, backup harian pukul 23.00 WIB; scheduler server wajib diaktifkan. BACKUP_PATH harus privat dan terpisah dari folder bukti. Pilihan Hostinger menggunakan folder backup lokal tersendiri dengan `BACKUP_REQUIRE_SEPARATE_DISK=false` pada image Coolify; mode `true` mewajibkan perangkat terpisah pada produksi. Backup lokal ikut hilang jika disk/VPS rusak; salinan ke luar VPS tetap disarankan. APP_KEY dipertahankan serta disimpan terpisah dari ZIP.
 
 ```powershell
 php artisan clbk:backup --reason=pre-upgrade
