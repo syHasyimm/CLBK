@@ -281,6 +281,18 @@ Tambahkan awalan **base64:** pada hasilnya, misalnya base64:HASIL_RANDOM_ANDA. J
 
 ### 7.5 Isi Environment Variables aplikasi
 
+Template khusus container tersedia di [deploy/coolify/.env.example](deploy/coolify/.env.example). Untuk menyiapkan isian dari komputer Windows, salin template menjadi `.env.production` bila file tersebut belum ada:
+
+```powershell
+if (-not (Test-Path -LiteralPath '.env.production')) {
+    Copy-Item -LiteralPath 'deploy/coolify/.env.example' -Destination '.env.production'
+}
+```
+
+File `.env.production` diabaikan Git dan tidak masuk image Docker. File ini adalah lembar persiapan; Coolify **tidak otomatis membacanya dari komputer Anda**. Lengkapi `APP_URL`, `APP_KEY`, `TRUSTED_PROXIES`, serta konfigurasi SMTP, kemudian masukkan nilainya ke Environment Variables resource aplikasi. `.env` lokal tetap untuk development. Template `.env.production.example` di root memakai path instalasi langsung pada server; untuk Dockerfile Coolify gunakan template dalam `deploy/coolify/` agar path container sesuai.
+
+Pada Coolify, aktifkan **Runtime Variable** dan nonaktifkan **Build Variable** untuk isian ini. Untuk password yang mengandung `$`, aktifkan **Literal** agar nilainya tidak dianggap referensi variabel. Setelah mengimpor lewat editor bulk, periksa nilai melalui editor per variabel. Hapus `DB_URL`, `MAIL_URL`, dan `SESSION_DOMAIN` lama jika sebelumnya ada: URL koneksi dapat menimpa konfigurasi database/SMTP di bawah, sedangkan cookie sebaiknya hanya berlaku pada host aplikasi. Simpan lalu **Redeploy** agar container dan cache konfigurasi memakai nilai baru. [Environment variables Coolify](https://coolify.io/docs/applications/configuration/environment-variables), [cache konfigurasi Laravel 13](https://laravel.com/docs/13.x/configuration#configuration-caching).
+
 Gunakan Environment Variables **resource CLBK TOKE**, bukan environment instance Coolify. Semua nilai berikut adalah **runtime**; jangan aktifkan Available at Buildtime untuk APP_KEY, kredensial SMTP, atau ping URL. Image dibangun tanpa secret produksi. Jika memakai editor bulk, periksa kembali nilai setelah disimpan, terutama tanda kutip dan password yang mengandung karakter khusus.
 
 ```dotenv
