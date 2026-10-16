@@ -290,6 +290,8 @@ Isi pengaturan berikut. Nama menu dapat sedikit berbeda antarrilis Coolify.
 
 Pada kolom **Domains**, gunakan **https://toke.example.com:8080** setelah mengganti hostname dengan domain aplikasi Anda. Akhiran `:8080` menentukan port tujuan proxy di dalam container. Akses pengguna tetap **https://toke.example.com** melalui 443; **APP_URL dan alamat browser tidak memakai :8080**. Jika domain tidak menyertakan port, Coolify memakai port pertama dari Ports Exposes; isi **8080** saja pada field tersebut. Nginx menerima HTTP pada port internal 8080, sedangkan HTTPS pengguna ditangani proxy Coolify. Pastikan HTTPS dan pengalihan HTTP → HTTPS diaktifkan. Dockerfile menjalankan server pada 0.0.0.0:8080. [Pengaturan domain dan port Coolify](https://coolify.io/docs/applications/configuration/general), [build Dockerfile di Coolify](https://coolify.io/docs/applications/builds/dockerfile).
 
+Untuk CLBK, kolom Domains memetakan seluruh aplikasi pada root hostname. **Jangan menambahkan `/login` ke kolom Domains**: path pada field ini membuat routing berbasis awalan path, bukan menentukan halaman awal pengguna. Route `/login` ditangani Laravel dan baru ditambahkan saat membuka URL di browser. Gunakan domain/subdomain yang Anda kelola untuk HTTPS produksi. Domain otomatis `nama-resource.IP_SERVER.sslip.io` disediakan Coolify untuk pengujian HTTP; panduan Coolify menyebut pembatasan penerbitan sertifikat pada zona bersama tersebut. Jangan mengganti APP_URL produksi menjadi HTTP atau menonaktifkan Secure cookie untuk melewati masalah TLS. Lihat bagian 18.5 jika HTTP bekerja tetapi HTTPS menyajikan sertifikat default. [Routing port/path dan domain pengujian Coolify](https://coolify.io/docs/core/networking/domains).
+
 ### 7.2 Tambahkan dua persistent directory mount
 
 Pada resource aplikasi → **Persistent Storage/Storages**, buat Directory Mount, atau Volume Mount dengan Source Path eksplisit jika itu nama pilihan pada versi Anda:
@@ -408,6 +410,20 @@ Contoh hasil mungkin 10.0.1.0/24; **gunakan hasil nyata**, bukan menyalin contoh
 
 Gunakan health check HTTP **GET /healthz**, port **8080**, status **200**, interval 30 detik, timeout 5 detik, startup/start period 120 detik. Dockerfile juga menyediakannya. Endpoint ini memeriksa Nginx → PHP-FPM dan tetap bisa sukses selama maintenance awal; **bukan bukti database/backup sehat**. /up dan doctor diperiksa setelah inisialisasi. [Health check Coolify](https://coolify.io/docs/applications/configuration/health-checks).
 
+Jika mengisi health check melalui UI Coolify, cocokkan seluruh field berikut. Request dijalankan ke dalam container, sehingga Scheme memakai HTTP meskipun website publik memakai HTTPS:
+
+| Field health check | Nilai |
+|---|---|
+| Enabled | Aktif |
+| Method | GET |
+| Scheme | http |
+| Host | 127.0.0.1 |
+| Port | 8080 |
+| Path | /healthz |
+| Return Code jika tersedia | 200 |
+
+Jangan memakai `/`, `/login`, atau endpoint yang memerlukan login sebagai health check. Saat maintenance, halaman tersebut mengembalikan 503; proxy dapat mengeluarkan container unhealthy dari routing dan menampilkan `No available server`. Pastikan request langsung ke `/healthz` benar-benar menghasilkan 200; jangan mengandalkan field Return Code saja karena versi generator health check Coolify saat ini memakai exit status curl/wget.
+
 Kosongkan **Pre-deployment Command** dan **Post-deployment Command** migrasi/seed pada pemasangan awal. Inisialisasi dilakukan melalui terminal setelah container siap, sesuai bagian 8. Simpan konfigurasi, lalu klik **Deploy**. Buka **Deployment Logs** sampai build selesai dan container running/healthy. Build pertama dapat lama karena mengunduh dependency dan membangun aset.
 
 Image memakai lockfile Composer/npm, tidak memakai vendor/node_modules dari Windows. PHP image menyediakan `pdo_mysql` dan klien MySQL untuk migrasi schema awal. SQLite di image hanya dipakai sebagai format snapshot backup portabel; database operasional tetap MySQL. Tidak perlu menjalankan npm run dev, artisan serve, atau Composer setup pada produksi.
@@ -501,8 +517,8 @@ gosu www-data php artisan clbk:backup --reason=initial-deploy
 Catat ID arsip hasilnya. Ganti nama pada perintah berikut, lalu:
 
 ```bash
-gosu www-data php artisan clbk:restore /backups/NAMA_BACKUP.zip --verify-only
-gosu www-data php artisan clbk:database-ready
+gosu www-data php artisan clbk:restore /backups/NAMA_BACKUP.zip --verify-only &&
+gosu www-data php artisan clbk:database-ready &&
 gosu www-data php artisan up
 ```
 
@@ -866,7 +882,8 @@ Seed tambahan hanya dijalankan bila instruksi rilis memerlukannya. Jangan menjal
 | File/fitur lokal tidak muncul setelah deploy | Commit/push source yang belum terkirim; cocokkan commit pada Deployment Logs. |
 | Container gagal start: mount/perangkat sama | Periksa dua mount dengan folder sumber berbeda. Untuk backup lokal Hostinger, gunakan BACKUP_REQUIRE_SEPARATE_DISK=false dan image baru sesuai bagian 5.4. Jika true, disk backup harus terpisah. |
 | 502/Bad Gateway | Ikuti diagnosis bagian 18.1. Ports Exposes harus 8080 dan Domains mengarah ke port tersebut. Port FPM 9000 bukan port HTTP. |
-| 503 sesudah deploy pertama | Maintenance awal memang aktif; selesaikan jalur A/B lalu artisan up. Sesudah update/restore, buka hanya setelah diverifikasi. |
+| 503 sesudah deploy pertama | Ikuti bagian 18.3 untuk memeriksa maintenance, schema, serta akun awal. Setelah inisialisasi dan verifikasi backup selesai, jalankan artisan up dari terminal aplikasi. |
+| No available server | Periksa status container dan health check bagian 18.4. Gunakan HTTP 127.0.0.1:8080/healthz; halaman maintenance pada / tidak cocok sebagai health check. |
 | Healthz sehat tetapi aplikasi error | Healthz hanya memeriksa Nginx/FPM. Periksa runtime env, log Laravel, /up dan doctor; pastikan migrasi telah dijalankan pada jalur A atau restore sukses pada B. |
 | HTTPS tidak terbit atau klien menolak sertifikat | DNS harus ke VPS yang benar, 80/443 terbuka, hapus AAAA yang salah, periksa proxy dan waktu perangkat. Cloudflare DNS only dahulu. Jangan mematikan verifikasi SSL. |
 | Login berulang, 419/Page Expired | Pastikan URL HTTPS sama, APP_KEY tidak berubah, SESSION_DOMAIN tidak diisi salah, Secure/HttpOnly benar, satu server penulis, session database tersedia. Simpan env dan redeploy, lalu logout/bersihkan cookie origin itu dan login kembali. Jangan menonaktifkan CSRF/Secure cookie. |
@@ -962,6 +979,84 @@ gosu www-data php artisan clbk:mysql-initialize
 Perintah ini memeriksa isi database sebelum mengulang import. Jika berhasil, lanjutkan seed dan pembuatan akun sesuai bagian 8 A, lalu backup/verifikasi bagian 9 sebelum `artisan up`. Jika menolak karena ada data atau riwayat migrasi yang tidak lengkap, pertahankan maintenance dan tinjau pemulihan yang mempertahankan data; jangan memaksa lewat `migrate:fresh`, `db:wipe`, atau menghapus volume MySQL.
 
 Import baseline berisi `DROP TABLE IF EXISTS`, sehingga **jangan menjalankan ulang file SQL atau `migrate --force` secara buta** setelah import awal gagal. Perintah initializer membatasi percobaan ulang ke instalasi kosong. `clbk:database-ready` tanpa `--serve-maintenance` harus lulus sebelum membuka akses pengguna.
+
+### 18.3 Deploy sukses tetapi browser mendapat HTTP 503
+
+Pada konfigurasi ini, container dapat healthy saat aplikasi masih maintenance. Inisialisasi atau pemulihan schema tidak otomatis membuka akses pengguna. Status 503 pada browser perlu diperiksa melalui terminal; pesan browser `Failed to load resource` saja belum membedakan maintenance Laravel dari respons proxy.
+
+Buka **Coolify → resource aplikasi CLBK → Terminal**, lalu jalankan satu per satu:
+
+```bash
+gosu www-data php artisan clbk:database-ready
+gosu www-data php artisan tinker --execute="dump(['maintenance' => app()->isDownForMaintenance(), 'users' => Illuminate\Support\Facades\DB::table('users')->count()]);"
+```
+
+Perintah pertama dapat mengaktifkan maintenance bila database belum siap. Perintah kedua hanya membaca status maintenance dan jumlah pengguna, tanpa mencetak kredensial atau data akun.
+
+| Hasil | Tindakan |
+|---|---|
+| Schema siap, users lebih dari 0, maintenance true | Jika bootstrap dan verifikasi backup bagian 8–9 sudah selesai, jalankan `gosu www-data php artisan up`, lalu muat ulang browser. Tidak perlu redeploy untuk menonaktifkan maintenance. |
+| Pesan MySQL kosong atau akun awal belum dibuat, users 0 | Selesaikan bagian 8 A: initializer, seed, dan bootstrap akun. Lanjutkan backup/verifikasi bagian 9, kemudian `artisan up`. Jangan membuka aplikasi hanya karena exit code pemeriksaan kosong adalah sukses. |
+| Schema/trigger belum lengkap atau koneksi gagal | Pertahankan maintenance. Tangani pesan pemeriksaan; untuk kegagalan trigger 1419 ikuti bagian 18.2. |
+| Maintenance false tetapi URL masih 503 | Catat URL request yang gagal di tab Network browser. Periksa Runtime Logs, status proxy, serta hasil `/healthz` pada bagian 18.1. Aset tertentu yang 503 perlu dibedakan dari halaman utama yang 503. |
+
+`artisan up` tidak membuat database atau akun; perintah ini hanya menonaktifkan maintenance. Jangan memasukkannya ke startup atau Post-deployment Command secara otomatis. Kosongkan juga perintah initializer dari Post-deployment Command: initializer selalu mengaktifkan maintenance, termasuk ketika schema sudah tersedia. Pemeriksaan kesiapan saat startup normal tidak membuka maintenance lama secara otomatis.
+
+### 18.4 Pesan No available server dari proxy
+
+Pesan ini menunjukkan proxy belum memiliki tujuan aplikasi yang tersedia. Pada proxy Traefik Coolify, container unhealthy dikeluarkan dari routing; jika tidak ada container sehat, proxy dapat memberi respons `No available server`. Halaman maintenance Laravel perlu dibedakan dari pesan proxy ini. [Diagnosis Coolify](https://coolify.io/docs/troubleshoot/applications/no-available-server), [perilaku health check](https://coolify.io/docs/applications/configuration/health-checks).
+
+1. Buka **resource aplikasi CLBK → Health Checks**. Gunakan seluruh nilai tabel bagian 7.6: **GET**, **http**, **127.0.0.1**, port **8080**, path **/healthz**. Health check tetap aktif.
+2. Pada **General/Network**, pastikan **Ports Exposes = 8080**, **Ports Mappings kosong**, dan **Domains = https://DOMAIN_ANDA:8080** tanpa `/login` atau path lain. Ganti hostname dengan domain aplikasi sebenarnya. APP_URL tetap URL HTTPS publik tanpa port internal dan tanpa `/login`. Path `/login` hanya dipakai saat mengakses halaman masuk di browser.
+3. Simpan lalu **Redeploy**. Periksa container hasil deployment terbaru sampai berstatus **running/healthy**; pastikan tidak terjadi rollback ke container lama.
+4. Pada **Terminal resource aplikasi**, jalankan:
+
+```bash
+curl -sS --max-time 10 -o /dev/null -w 'healthz_http=%{http_code}\n' http://127.0.0.1:8080/healthz
+supervisorctl -c /etc/supervisor/clbk.conf status
+```
+
+Harapkan `healthz_http=200` dan kedua proses RUNNING. Jika curl menghasilkan 200 tetapi container masih unhealthy, cocokkan health check yang benar-benar dipakai Coolify dengan request ini. Jika container sudah healthy tetapi domain masih memberi pesan proxy, periksa proxy server berstatus Running serta network/destination dan domain routing aplikasi. Jangan mengubah data, seed ulang, atau membuka maintenance untuk mencoba memperbaiki jaringan proxy.
+
+Jika hasil curl 502/000, gunakan Runtime Logs dan diagnosis bagian 18.1. Jika terminal tidak bisa dibuka atau status container restarting/stopped, periksa 30 baris terakhir Runtime Logs untuk kegagalan startup sebelum menilai routing. Catat status container dan hasil curl; tangani kegagalan yang ditunjukkan log.
+
+Setelah routing pulih, halaman web dapat menampilkan maintenance 503. Pada tahap itu selesaikan bagian 8–9 atau diagnosis 18.3, lalu buka akses dengan `artisan up` setelah database/akun/backup siap.
+
+### 18.5 HTTP bekerja tetapi HTTPS gagal pada domain sslip.io
+
+Domain otomatis sslip.io hanya menyelesaikan DNS ke IP yang tertulis pada hostname. Ini tidak membuktikan bahwa route HTTPS dan sertifikat untuk hostname tersebut sudah tersedia. Dokumentasi Coolify menyatakan URL sslip.io yang dihasilkan tetap HTTP untuk pengujian, serta menyarankan domain sendiri untuk TLS/produksi karena pembatasan penerbitan sertifikat pada zona bersama. [Domain pengujian sslip.io](https://coolify.io/docs/core/networking/domains#use-sslipio-testing-domains).
+
+Jika HTTP `/login` mengembalikan 200 tetapi HTTPS menyajikan `TRAEFIK DEFAULT CERT`, proses aplikasi sudah dapat melayani request melalui HTTP, sementara sertifikat HTTPS yang diharapkan belum disajikan. Sertifikat default saja belum menjelaskan penyebab penerbitan sertifikat gagal; baca **Servers → server aplikasi → Proxy → Logs** untuk pesan ACME bila diperlukan. Jangan menyimpulkan database rusak atau mengulang seed dari gejala TLS ini.
+
+Untuk produksi, pilih subdomain yang Anda kelola, misalnya `clbk.namausaha.id`. Ganti contoh hostname berikut dengan milik Anda:
+
+1. Pada pengelola DNS, buat record **A** untuk subdomain pilihan menuju **IP VPS aplikasi**. Pastikan record AAAA hanya ada bila IPv6-nya benar-benar menuju proxy yang sama. Untuk diagnosis awal, gunakan DNS only bila melalui Cloudflare, sesuai bagian 4.
+2. Pada **resource aplikasi CLBK → Domains**, gunakan **Protocol=https**, **Domain=clbk.namausaha.id**, **Port=8080**, dan **Path kosong**. Jika versi Coolify memakai satu kolom URL, isikan `https://clbk.namausaha.id:8080`. **Ports Exposes** tetap `8080` dan Ports Mappings kosong.
+3. Pada Production Runtime Variables aplikasi, isi `APP_URL=https://clbk.namausaha.id`. Pertahankan cookie Secure dan APP_ENV production. File `.env.production` lokal juga harus menggunakan origin yang sama setelah domain dipilih.
+4. Simpan dan **Redeploy**. Coolify meminta sertifikat untuk domain HTTPS tersebut. Port publik 80/443 harus mencapai proxy agar validasi HTTP ACME berjalan. Periksa Proxy Logs bila sertifikat belum terbit.
+5. Buka `https://clbk.namausaha.id/login` di browser dan pastikan sertifikat sesuai hostname serta dipercaya tanpa pengecualian. Kolom Domains dan APP_URL tidak memuat `/login`; port internal 8080 hanya ada pada pengaturan tujuan proxy.
+
+Gunakan HTTP hanya untuk diagnosis awal respons server, tanpa login atau memasukkan data usaha. Aplikasi produksi ini memerlukan HTTPS dan cookie sesi Secure. Status container healthy tidak memverifikasi kecocokan sertifikat atau akses domain publik.
+
+**Domain yang dipilih untuk proyek ini: ncimproject.tech.** Pada pemeriksaan 16 Oktober 2026, record A mengarah ke `72.62.195.215`, sesuai IPv4 VPS aplikasi. Record AAAA juga ada, bernilai `2a02:4780:5e:753c::1`. Bandingkan nilai AAAA dengan IPv6 VPS pada hPanel; jika VPS hanya memakai IPv4 atau IPv6 itu milik server lain, hapus/koreksi record AAAA untuk hostname ini. Jangan mengubah record email MX/TXT untuk memperbaiki routing web. Kedua jalur DNS harus menuju resource yang sama. [DNS Coolify](https://coolify.io/docs/core/networking/dns), [pengelolaan AAAA Hostinger](https://www.hostinger.com/support/8899705-how-to-manage-aaaa-records-at-hostinger/).
+
+Pada **resource aplikasi CLBK**, gunakan nilai berikut:
+
+| Pengaturan | Nilai untuk domain pilihan |
+|---|---|
+| Domains pada versi dengan kolom URL | https://ncimproject.tech:8080 |
+| Ports Exposes | 8080 |
+| Ports Mappings | Kosong |
+| APP_URL pada Production Runtime Variables | https://ncimproject.tech |
+| URL yang dibuka pengguna | https://ncimproject.tech/login |
+
+Jika editor memakai field terpisah, pilih **Protocol=https**, **Domain=ncimproject.tech**, **Port=8080**, dan **Path kosong**. Jangan memasukkan `/login` ke Path atau APP_URL. Cocokkan juga health check `/healthz` pada HTTP port 8080 seperti bagian 7.6.
+
+Simpan pengaturan domain dan runtime env, lalu **Redeploy** resource aplikasi. Perubahan APP_URL di `.env.production` lokal saja tidak mengubah container Coolify. Pastikan hostname ini dipakai resource CLBK yang benar dan tidak bertabrakan dengan resource lain atau domain dashboard Coolify; selesaikan peringatan konflik domain sebelum melanjutkan. Jika setelah redeploy container tetap healthy tetapi URL HTTPS masih memberi `No available server`, ambil Proxy Logs untuk route/service hostname tersebut dan periksa jaringan proxy sesuai bagian 18.4. Jangan membuka maintenance atau mengulang inisialisasi database untuk memperbaiki route proxy.
+
+### 18.6. Menguji filter tanggal dan sesi pada staging
+
+Gunakan resource serta database staging yang terpisah. [Panduan pengujian filter tanggal dan sesi](docs/date-filter-testing.md) menyediakan fixture satu mobil dan lima tiket bertanggal pasti, command `clbk:seed-date-filter` untuk staging dengan APP_ENV production, konfigurasi sesi database persisten, serta langkah Batal/Tetap di sini/Buang perubahan. Rentang 10–12 Oktober 2026 menghasilkan tiga tiket fixture dan mengecualikan dua tiket di luar rentang. Command staging memakai akun uji yang sudah ada; seeder akun contoh tetap diblokir pada produksi.
 
 ## 19. Catatan serah terima yang Anda pegang
 

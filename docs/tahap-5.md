@@ -17,7 +17,7 @@ Tanggal: 10 Oktober 2026. Status: implementasi dan pengujian otomatis selesai; p
 Tampilan Dashboard diperbarui setelah implementasi tahap ini dengan grafik periode, filter cepat, susunan metrik yang lebih modern, serta rincian mobil pada layar kecil. Hasil dan batas pemeriksaannya tersedia pada [pembaruan tampilan Dashboard](redesain-dashboard.md).
 
 1. Buka **Dashboard** untuk memeriksa periode dan mobil. Tautan metrik membuka rincian transaksi; tautan saldo saat ini membuka seluruh tanggal sumber sampai hari ini.
-2. Buka **Laporan**, pilih jenis laporan, tanggal dan filter, lalu tekan **Terapkan filter**. Total di atas tabel mencakup seluruh hasil, walaupun tabel dibatasi 50 baris per halaman.
+2. Buka **Laporan**, pilih jenis laporan, tanggal dan filter, lalu tekan **Terapkan filter**. Total di atas tabel mencakup seluruh hasil, walaupun tabel dibatasi 50 baris per halaman. **Reset rincian** kembali ke `/reports` tanpa query, mengambil ringkasan terbaru untuk hari usaha saat ini (WIB), dan mengembalikan tanggal serta seluruh pilihan filter ke default server. Perubahan input yang belum diterapkan ikut dibuang.
 3. Klik **Lihat rincian** untuk membuka sumber dan bukti yang tersedia.
 4. Gunakan **Ekspor CSV** atau **Cetak / PDF**. Keduanya memakai filter yang telah diterapkan, bukan perubahan formulir yang belum diterapkan. CSV/cetak memuat semua halaman.
 

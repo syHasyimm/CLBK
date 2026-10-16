@@ -7,6 +7,7 @@ Tanggal pemeriksaan: 9 Oktober 2026. Acuan: tahap 1 pada `prd.md`.
 - Akun pengguna dengan role Manajer Toke, Supir, dan Kasir.
 - CRUD/nonaktif konsumen, anggota muat, mobil, pabrik, akun kas/bank, dan kategori pengeluaran.
 - Pencarian, filter status, dan pagination pada server.
+- Filter role pada Akun Pengguna: Semua role, Manajer Toke, Supir, dan Kasir; dapat digabungkan dengan pencarian serta status akun.
 - Pengaturan nama usaha dan awalan nomor bukti.
 - Sidebar desktop serta menu ponsel yang mengikuti role.
 - Form, field, tabel, filter, konfirmasi, dan pesan hasil yang dipakai ulang.
@@ -14,6 +15,10 @@ Tanggal pemeriksaan: 9 Oktober 2026. Acuan: tahap 1 pada `prd.md`.
 - Audit perubahan master, akun melalui administrasi/bootstrap, serta pengaturan usaha.
 
 Manajer memiliki akses pengelolaan. Supir dan kasir ditolak bila membuka route pengelolaan atau mengirim request perubahan langsung. Endpoint referensi hanya mengirim ID, kode, dan nama/plat dari data aktif; kontak, alamat, dan catatan privat tidak ikut dikirim. Referensi akun kas/kategori biaya dibatasi untuk manajer dan kasir.
+
+Pada **Akun Pengguna**, pilih **Filter role**, lalu tekan **Terapkan** untuk mengambil hasil dari server. Parameter `role` pada `GET /users` menerima `manager`, `driver`, atau `cashier`; kosong/tanpa parameter berarti semua role. Filter berlaku sebelum pagination, dipertahankan pada tautan halaman, dan dibersihkan bersama pencarian/status melalui **Reset**. Role tidak dikenal atau berbentuk array ditolak oleh validasi. Tidak ada role `admin` terpisah; hak administrasi dimiliki Manajer Toke.
+
+Verifikasi memakai database pengujian terpisah melalui `php artisan test --filter=UserManagementTest`. Fixture `RoleUserSeeder` menyediakan tiga akun dengan role berbeda dalam lingkungan `testing`/`local`. Untuk uji manual di instalasi lokal, jalankan `php artisan db:seed --class=RoleUserSeeder`, lalu periksa setiap pilihan role, gabungan pencarian/status, hasil kosong, pagination, dan Reset. Seeder contoh tetap ditolak di produksi; pada staging yang memakai `APP_ENV=production`, buat akun uji melalui menu Akun Pengguna dengan kredensial tersendiri.
 
 Akun nonaktif tidak dapat login. Status dan role dibaca ulang pada request yang terautentikasi. Pemeriksaan hash sesi berjalan setelah pembacaan akun terbaru, sehingga sesi dengan kata sandi lama ditolak. Penonaktifan dan pengaturan ulang kata sandi melalui manajer menghapus sesi akun terkait serta mengganti token remember. Role tidak dapat diubah melalui profil sendiri. Manajer terakhir tidak dapat dinonaktifkan atau diturunkan rolenya.
 

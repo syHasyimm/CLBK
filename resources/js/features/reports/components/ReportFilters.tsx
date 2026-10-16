@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { RotateCcw, SlidersHorizontal } from 'lucide-react';
 import InputError from '@/components/InputError';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,23 @@ export default function ReportFilters({
             onStart: () => setBusy(true),
             onFinish: () => setBusy(false),
         });
+    }
+    function reset() {
+        router.get(
+            route('reports.index'),
+            {},
+            {
+                replace: true,
+                preserveState: false,
+                preserveScroll: true,
+                fresh: true,
+                onStart: () => {
+                    setBusy(true);
+                    setData({ view: 'summary', from: '', to: '', vehicle_id: '' });
+                },
+                onFinish: () => setBusy(false),
+            },
+        );
     }
     return (
         <section className="report-panel overflow-hidden print:hidden">
@@ -184,17 +201,15 @@ export default function ReportFilters({
                     <Button disabled={busy} className="min-h-11 rounded-xl px-5">
                         {busy ? 'Memuat laporan...' : 'Terapkan filter'}
                     </Button>
-                    <Link
-                        className="report-link min-h-11"
-                        href={route('reports.index', {
-                            view: filters.view,
-                            from: filters.from,
-                            to: filters.to,
-                        })}
+                    <button
+                        type="button"
+                        className="report-link min-h-11 disabled:opacity-50"
+                        onClick={reset}
+                        disabled={busy}
                     >
                         <RotateCcw className="size-3.5" aria-hidden="true" />
                         Reset rincian
-                    </Link>
+                    </button>
                     <p className="text-[11px] text-muted-foreground sm:ml-auto">
                         Ekspor dan cetak mengikuti filter yang sudah diterapkan.
                     </p>

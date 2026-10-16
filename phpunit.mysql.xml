@@ -17,6 +17,8 @@
             <file>tests/Feature/CreateBusinessCashTest.php</file>
             <file>tests/Feature/PayrollHistoryTest.php</file>
             <file>tests/Feature/UserManagementTest.php</file>
+            <file>tests/Feature/WeighingDateFilterTest.php</file>
+            <file>tests/Feature/SeedDateFilterCommandTest.php</file>
             <file>tests/Feature/DriverCustomerTest.php</file>
             <file>tests/Feature/BusinessSettingsTest.php</file>
             <file>tests/Feature/BootstrapUserTest.php</file>

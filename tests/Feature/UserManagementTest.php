@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use Database\Seeders\RoleUserSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -45,6 +46,7 @@ class UserManagementTest extends TestCase
         foreach (['driver', 'cashier'] as $role) {
             $this->actingAs(User::factory()->create(['role' => $role]));
             $this->get(route('users.index'))->assertForbidden();
+            $this->get(route('users.index', ['role' => 'manager']))->assertForbidden();
             $this->get(route('users.create'))->assertForbidden();
             $this->get(route('users.edit', $manager))->assertForbidden();
             $this->post(route('users.store'), $this->payload())->assertForbidden();
@@ -52,6 +54,96 @@ class UserManagementTest extends TestCase
             $this->patch(route('users.status', $manager), ['is_active' => false])->assertForbidden();
             $this->get(route('settings.business.edit'))->assertForbidden();
             $this->patch(route('settings.business.update'), ['business_name' => 'Changed', 'receipt_prefix' => 'XX'])->assertForbidden();
+        }
+    }
+
+    public function test_manager_can_filter_each_seeded_role_and_clear_the_filter(): void
+    {
+        $this->seed(RoleUserSeeder::class);
+        $manager = User::query()->where('role', UserRole::Manager)->sole();
+        $this->actingAs($manager);
+
+        foreach (UserRole::cases() as $role) {
+            $user = User::query()->where('role', $role)->sole();
+            $this->get(route('users.index', ['role' => $role->value]))
+                ->assertInertia(fn (Assert $page) => $page->component('Users/Index')
+                    ->where('filters.role', $role->value)
+                    ->where('records.total', 1)
+                    ->has('records.data', 1)
+                    ->where('records.data.0.id', $user->id)
+                    ->where('records.data.0.role', $role->value)
+                    ->missing('records.data.0.password')
+                    ->missing('records.data.0.remember_token'));
+        }
+
+        foreach ([[], ['role' => '']] as $filters) {
+            $this->get(route('users.index', $filters))
+                ->assertInertia(fn (Assert $page) => $page->component('Users/Index')
+                    ->where('filters', ['q' => '', 'status' => 'all', 'role' => ''])
+                    ->where('records.total', 3)
+                    ->has('records.data', 3)
+                    ->where('roles', [
+                        ['value' => 'manager', 'label' => 'Manajer Toke'],
+                        ['value' => 'driver', 'label' => 'Supir'],
+                        ['value' => 'cashier', 'label' => 'Kasir'],
+                    ]));
+        }
+    }
+
+    public function test_role_filter_combines_with_search_and_account_status(): void
+    {
+        $manager = User::factory()->manager()->create(['name' => 'Tim Manajer']);
+        User::factory()->create(['name' => 'Tim Supir Aktif']);
+        User::factory()->cashier()->inactive()->create(['name' => 'Tim Kasir Nonaktif']);
+        $match = User::factory()->inactive()->create(['name' => 'Supir Nonaktif', 'email' => 'tim@example.com']);
+        User::factory()->inactive()->create(['name' => 'Supir Lain', 'email' => 'lain@example.com']);
+
+        $this->actingAs($manager)->get(route('users.index', ['q' => 'Tim', 'status' => 'inactive', 'role' => 'driver']))
+            ->assertInertia(fn (Assert $page) => $page->component('Users/Index')
+                ->where('filters', ['q' => 'Tim', 'status' => 'inactive', 'role' => 'driver'])
+                ->where('records.total', 1)
+                ->has('records.data', 1)
+                ->where('records.data.0.id', $match->id)
+                ->where('records.data.0.is_active', false));
+
+        $this->get(route('users.index', ['q' => 'Tim', 'status' => 'active', 'role' => 'cashier']))
+            ->assertInertia(fn (Assert $page) => $page->component('Users/Index')
+                ->where('records.total', 0)->has('records.data', 0));
+    }
+
+    public function test_role_filter_is_applied_before_pagination_and_retained_in_links(): void
+    {
+        $manager = User::factory()->manager()->create();
+        User::factory()->count(16)->cashier()->create(['name' => 'Kasir Uji']);
+        User::factory()->create(['name' => 'Kasir dalam nama saja']);
+        User::factory()->cashier()->inactive()->create(['name' => 'Kasir Nonaktif']);
+
+        $response = $this->actingAs($manager)->get(route('users.index', ['role' => 'cashier', 'q' => 'Kasir', 'status' => 'active']));
+        $response->assertInertia(fn (Assert $page) => $page->component('Users/Index')
+            ->where('records.total', 16)
+            ->where('records.current_page', 1)
+            ->has('records.data', 15)
+            ->where('records.data', fn ($rows) => $rows->every(fn ($row) => $row['role'] === 'cashier')));
+
+        $nextPageUrl = $response->inertiaProps('records.next_page_url');
+        parse_str(parse_url($nextPageUrl, PHP_URL_QUERY), $query);
+        $this->assertSame(['role' => 'cashier', 'q' => 'Kasir', 'status' => 'active', 'page' => '2'], $query);
+
+        $this->get($nextPageUrl)->assertInertia(fn (Assert $page) => $page->component('Users/Index')
+            ->where('filters.role', 'cashier')
+            ->where('records.total', 16)
+            ->where('records.current_page', 2)
+            ->has('records.data', 1)
+            ->where('records.data.0.role', 'cashier'));
+    }
+
+    public function test_user_list_rejects_unknown_or_malformed_roles(): void
+    {
+        $this->actingAs(User::factory()->manager()->create());
+
+        foreach (['admin', 'owner', ['manager'], "manager' OR 1=1 --"] as $role) {
+            $this->getJson(route('users.index', ['role' => $role]))
+                ->assertUnprocessable()->assertJsonValidationErrors('role');
         }
     }
 

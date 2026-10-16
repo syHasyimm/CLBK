@@ -55,6 +55,8 @@ Ketiga akun baru aktif dan kata sandinya disimpan sebagai hash. Seeder dapat diu
 
 ## Tahap 1
 
+Untuk fixture mobil dan lima timbangan bertanggal pasti, ikuti [pengujian filter tanggal dan sesi](docs/date-filter-testing.md). Panduan mencakup database lokal terpisah, command staging, pembatalan form, dan sesi Coolify.
+
 Manajer dapat menambah, mencari, mengubah, menonaktifkan, mengaktifkan kembali, serta menghapus data master yang belum digunakan, kecuali kas usaha yang disediakan sebagai satu kas tetap. Data yang dirujuk transaksi ditahan oleh foreign key dan diarahkan untuk dinonaktifkan. Pengelolaan akun pengguna menggunakan penonaktifan; minimal satu manajer harus tetap aktif. Supir dan kasir memperoleh referensi aktif yang dibutuhkan. Supir dapat menambahkan konsumen aktif melalui **Tambah Konsumen** pada formulir timbang atau sidebar; setelah disimpan, konsumen baru langsung terpilih pada formulir timbang. Pengubahan/penghapusan konsumen dan perubahan role tetap dikelola manajer.
 
 Admin dan kasir memakai satu **Kas Usaha** untuk seluruh penerimaan, pembayaran konsumen, gaji muat, dan pengeluaran. Formulir langsung memakai kas tersebut tanpa pemilih akun; metode Tunai/Transfer bank tetap dapat dicatat, dengan referensi wajib untuk transfer. Akun kas tambahan tidak dapat dibuat atau dikelola melalui aplikasi. Saldo dan mutasi lama tetap tersimpan. [Rincian kas tunggal dan tambah konsumen](docs/kas-tunggal-dan-konsumen-supir.md).

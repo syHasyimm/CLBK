@@ -130,6 +130,28 @@ class ReportsTest extends TestCase
         return $response->inertiaProps();
     }
 
+    public function test_default_reports_route_resets_detail_filters_and_recalculates_today_summary(): void
+    {
+        $this->fixture();
+        $this->actingAs($this->manager);
+        $detail = $this->get(route('reports.index', [
+            'view' => 'weighings', 'from' => '2026-10-09', 'to' => '2026-10-09',
+            'vehicle_id' => $this->vehicle->id, 'customer_id' => $this->customer->id, 'status' => 'posted',
+        ]));
+        $detail->assertOk()->assertInertia(fn (Assert $page) => $page->component('Reports/Index')
+            ->where('filters.view', 'weighings')->where('report.rows.total', 1)->where('summary', null));
+
+        // A reset must use the server's current business date, including after midnight WIB.
+        $this->travelTo(Carbon::parse('2026-10-09 17:00:00', 'UTC'));
+        $this->get(route('reports.index'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Reports/Index')
+                ->where('filters', ['view' => 'summary', 'from' => '2026-10-10', 'to' => '2026-10-10', 'vehicle_id' => null])
+                ->where('report', null)
+                ->where('summary.totals.weighing_count', 0)
+                ->where('summary.totals.purchase_idr', 0)
+                ->where('summary.totals.revenue_idr', 0));
+    }
+
     private function csv(string $view, array $extra = []): array
     {
         $response = $this->get(route('reports.export', $extra + ['view' => $view, 'from' => '2026-10-09', 'to' => '2026-10-09']))->assertOk();

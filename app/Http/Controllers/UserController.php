@@ -10,6 +10,7 @@ use App\Models\Vehicle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,16 +21,21 @@ class UserController extends Controller
         Gate::authorize('viewAny', User::class);
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'], 'status' => ['nullable', 'in:all,active,inactive'],
+            'role' => ['nullable', Rule::enum(UserRole::class)],
             'page' => ['nullable', 'integer', 'min:1', 'max:1000000'],
         ]);
         $q = $filters['q'] ?? '';
         $status = $filters['status'] ?? 'all';
+        $role = $filters['role'] ?? '';
         $query = User::query();
         if ($q !== '') {
             $query->where(fn ($query) => $query->where('name', 'like', '%'.$q.'%')->orWhere('email', 'like', '%'.$q.'%'));
         }
         if ($status !== 'all') {
             $query->where('is_active', $status === 'active');
+        }
+        if ($role !== '') {
+            $query->where('role', $role);
         }
 
         return Inertia::render('Users/Index', [
@@ -39,7 +45,8 @@ class UserController extends Controller
                     'assigned_vehicle' => $user->role === UserRole::Driver
                         ? ($user->assignedVehicle ? $user->assignedVehicle->plate_number.($user->assignedVehicle->is_active ? '' : ' (nonaktif)') : 'Belum ditetapkan') : '—',
                 ]),
-            'filters' => ['q' => $q, 'status' => $status],
+            'filters' => ['q' => $q, 'status' => $status, 'role' => $role],
+            'roles' => array_map(fn ($role) => ['value' => $role->value, 'label' => $role->label()], UserRole::cases()),
         ]);
     }
 

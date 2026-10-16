@@ -1,20 +1,35 @@
-import { useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import { router } from '@inertiajs/react';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Button } from '@/components/ui/button';
 import { Search, X } from 'lucide-react';
 import type { ListFilters as Filters } from '@/types/master-data';
+import type { SelectOption } from '@/components/common/FormField';
 
-export default function ListFilters({ filters, url }: { filters: Filters; url: string }) {
+export default function ListFilters({
+    filters,
+    url,
+    roles,
+}: {
+    filters: Filters & { role?: string };
+    url: string;
+    roles?: SelectOption[];
+}) {
     const [q, setQ] = useState(filters.q);
     const [status, setStatus] = useState(filters.status);
+    const [role, setRole] = useState(filters.role ?? '');
     const [processing, setProcessing] = useState(false);
+    useEffect(() => {
+        setQ(filters.q);
+        setStatus(filters.status);
+        setRole(filters.role ?? '');
+    }, [filters.q, filters.status, filters.role]);
     function apply(event: FormEvent) {
         event.preventDefault();
         router.get(
             url,
-            { q, status },
+            { q, status, ...(roles ? { role } : {}) },
             {
                 preserveState: true,
                 preserveScroll: true,
@@ -51,10 +66,25 @@ export default function ListFilters({ filters, url }: { filters: Filters; url: s
                 <option value="active">Aktif</option>
                 <option value="inactive">Nonaktif</option>
             </NativeSelect>
+            {roles && (
+                <NativeSelect
+                    aria-label="Filter role"
+                    className="w-44"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                >
+                    <option value="">Semua role</option>
+                    {roles.map((option) => (
+                        <option key={option.value} value={option.value}>
+                            {option.label}
+                        </option>
+                    ))}
+                </NativeSelect>
+            )}
             <Button variant="outline" disabled={processing}>
                 Terapkan
             </Button>
-            {(filters.q || filters.status !== 'all') && (
+            {(filters.q || filters.status !== 'all' || filters.role) && (
                 <Button
                     type="button"
                     variant="ghost"
@@ -62,6 +92,7 @@ export default function ListFilters({ filters, url }: { filters: Filters; url: s
                     onClick={() => {
                         setQ('');
                         setStatus('all');
+                        setRole('');
                         router.get(url, {}, { preserveState: true });
                     }}
                 >

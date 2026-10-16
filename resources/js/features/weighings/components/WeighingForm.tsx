@@ -175,7 +175,7 @@ export default function WeighingForm(props: WeighingFormProps) {
                                 className="h-12 min-w-0 px-3 text-xs sm:px-5 sm:text-sm"
                                 asChild
                             >
-                                <Link href={route('weighings.index')}>Kembali</Link>
+                                <Link href={route('weighings.index')}>Batal</Link>
                             </Button>
                             <Button
                                 type="submit"

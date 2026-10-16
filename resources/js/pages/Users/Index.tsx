@@ -4,6 +4,7 @@ import PageHeading from '@/components/common/PageHeading';
 import RecordsTable from '@/components/common/RecordsTable';
 import RecordActions from '@/components/common/RecordActions';
 import ListFilters from '@/components/common/ListFilters';
+import type { SelectOption } from '@/components/common/FormField';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import {
@@ -16,9 +17,11 @@ import {
 export default function Index({
     records,
     filters,
+    roles,
 }: {
     records: PaginatedData<MasterRecord>;
-    filters: Filters;
+    filters: Filters & { role: string };
+    roles: SelectOption[];
 }) {
     const displayRecords = {
         ...records,
@@ -45,7 +48,7 @@ export default function Index({
             }
         >
             <Head title="Akun Pengguna" />
-            <ListFilters filters={filters} url={route('users.index')} />
+            <ListFilters filters={filters} url={route('users.index')} roles={roles} />
             <RecordsTable
                 records={displayRecords}
                 columns={{

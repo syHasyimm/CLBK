@@ -23,8 +23,12 @@ export default function UnsavedChangesGuard({ dirty }: { dirty: boolean }) {
                     Anda sudah mengubah form ini. Tinggalkan halaman dan abaikan perubahan?
                 </AlertDialogDescription>
                 <div className="flex flex-wrap justify-end gap-3">
-                    <AlertDialogCancel onClick={dialog.cancel}>Tetap di sini</AlertDialogCancel>
-                    <AlertDialogAction onClick={dialog.leave}>Tinggalkan halaman</AlertDialogAction>
+                    <AlertDialogCancel type="button" onClick={dialog.cancel}>
+                        Tetap di sini
+                    </AlertDialogCancel>
+                    <AlertDialogAction type="button" onClick={dialog.leave}>
+                        Buang perubahan
+                    </AlertDialogAction>
                 </div>
             </AlertDialogContent>
         </AlertDialog>
