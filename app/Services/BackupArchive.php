@@ -95,7 +95,6 @@ final class BackupArchive
         $files = collect(File::files(database_path('migrations')))->sortBy(fn ($file) => $file->getFilename());
 
         $fingerprints = $files->map(fn ($file) => $file->getFilename().':'.hash_file('sha256', $file->getPathname()))->all();
-        $fingerprints[] = 'clbk.sql:'.hash_file('sha256', database_path('schema/clbk.sql'));
 
         return hash('sha256', implode("\n", $fingerprints));
     }

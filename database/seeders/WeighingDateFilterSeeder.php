@@ -20,7 +20,6 @@ class WeighingDateFilterSeeder extends Seeder
         if (! app()->environment(['local', 'testing'])) {
             throw new RuntimeException('WeighingDateFilterSeeder hanya untuk database local atau testing yang terpisah dari produksi.');
         }
-        $this->call([DatabaseSeeder::class, RoleUserSeeder::class]);
         app(WeighingDateFilterData::class)->seed(
             User::where('email', 'manager@clbk.test')->firstOrFail(),
             User::where('email', 'supir@clbk.test')->firstOrFail(),

@@ -1,0 +1,75 @@
+name: clbk-local
+
+services:
+  app:
+    image: clbk:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/bin/sh", "/var/www/html/docker/entrypoint.local.sh"]
+    restart: unless-stopped
+    stop_grace_period: 120s
+    ports:
+      - "127.0.0.1:${CLBK_LOCAL_HTTP_PORT:-8088}:8080"
+    environment:
+      APP_NAME: CLBK TOKE Local
+      APP_ENV: local
+      APP_DEBUG: "false"
+      APP_KEY: ${CLBK_LOCAL_APP_KEY:?Jalankan scripts/start-local-docker.ps1}
+      APP_URL: http://localhost:${CLBK_LOCAL_HTTP_PORT:-8088}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: clbk_local
+      DB_USERNAME: clbk_local
+      DB_PASSWORD: ${CLBK_LOCAL_DB_PASSWORD:?Jalankan scripts/start-local-docker.ps1}
+      TRUSTED_PROXIES: ""
+      SESSION_COOKIE: clbk_docker_local_session
+      SESSION_SECURE_COOKIE: "false"
+      SESSION_DOMAIN: "null"
+      MAIL_MAILER: smtp
+      MAIL_SCHEME: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      MAIL_FROM_ADDRESS: noreply@clbk.test
+      MAIL_FROM_NAME: CLBK TOKE Local
+    volumes:
+      - app-data:/data
+      - backups:/backups
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_bin
+      - --log-bin-trust-function-creators=ON
+    environment:
+      MYSQL_DATABASE: clbk_local
+      MYSQL_USER: clbk_local
+      MYSQL_PASSWORD: ${CLBK_LOCAL_DB_PASSWORD:?Jalankan scripts/start-local-docker.ps1}
+      MYSQL_ROOT_PASSWORD: ${CLBK_LOCAL_MYSQL_ROOT_PASSWORD:?Jalankan scripts/start-local-docker.ps1}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$${MYSQL_PASSWORD}\" mysql -h127.0.0.1 -u\"$${MYSQL_USER}\" -D\"$${MYSQL_DATABASE}\" -Nse 'SELECT 1' >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${CLBK_LOCAL_MAIL_PORT:-8025}:8025"
+
+volumes:
+  app-data:
+  backups:
+  mysql-data:

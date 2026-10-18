@@ -22,7 +22,7 @@ class WeighingDateFilterTest extends TestCase
 
     public function test_fixture_has_a_vehicle_and_known_weighings_and_date_filter_includes_wib_boundaries_for_each_role(): void
     {
-        $this->seed(WeighingDateFilterSeeder::class);
+        $this->seed();
         $vehicle = Vehicle::where('code', 'UAT-DATE-M01')->sole();
         $this->assertTrue($vehicle->is_active);
         $this->assertSame('BK 2026 UAT', $vehicle->plate_number);
@@ -56,13 +56,13 @@ class WeighingDateFilterTest extends TestCase
     public function test_rerunning_fixture_preserves_records_and_restores_the_clock(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-10-16T03:00:00Z'));
-        $this->seed(WeighingDateFilterSeeder::class);
+        $this->seed();
         $tables = ['users', 'vehicles', 'customers', 'weighings', 'weighing_items', 'weighing_loaders', 'price_schedules', 'audit_logs'];
         $before = [];
         foreach ($tables as $table) {
             $before[$table] = DB::table($table)->orderBy('id')->get()->toJson();
         }
-        $this->seed(WeighingDateFilterSeeder::class);
+        $this->seed();
         foreach ($tables as $table) {
             $this->assertSame($before[$table], DB::table($table)->orderBy('id')->get()->toJson(), $table);
         }
@@ -90,7 +90,7 @@ class WeighingDateFilterTest extends TestCase
     public function test_fixture_reports_inactive_references_without_reactivating_or_replacing_tickets(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-10-16T03:00:00Z'));
-        $this->seed(WeighingDateFilterSeeder::class);
+        $this->seed();
         $customer = Customer::where('code', WeighingDateFilterSeeder::CUSTOMER_CODE)->sole();
         $customer->update(['is_active' => false]);
         $before = Weighing::orderBy('id')->get()->toJson();

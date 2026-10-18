@@ -12,6 +12,7 @@ use App\Services\BackupService;
 use App\Services\BackupSnapshot;
 use App\Services\MySqlBackup;
 use App\Support\Database\MySqlDatabase;
+use Database\Seeders\BusinessDefaultsSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -38,7 +39,7 @@ class MySqlBackupTest extends TestCase
         config(['backups.path' => $directory, 'backups.minimum_free_bytes' => 0, 'backups.require_separate_disk' => false, 'session.driver' => 'database']);
         Storage::fake('local');
         config(['filesystems.disks.local.root' => Storage::disk('local')->path('')]);
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         $manager = User::factory()->manager()->create(['name' => 'Before backup', 'remember_token' => 'old-token']);
         $deletedDraftUser = User::factory()->create();
         $deletedId = $deletedDraftUser->id;
@@ -90,7 +91,7 @@ class MySqlBackupTest extends TestCase
     {
         $directory = sys_get_temp_dir().'/clbk-mysql-rollback-'.Str::uuid();
         File::ensureDirectoryExists($directory);
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         $manager = User::factory()->manager()->create(['name' => 'Keep current user']);
         $customer = Customer::create(['code' => 'SAFE', 'name' => 'Keep current customer', 'is_active' => true]);
         $backup = app(MySqlBackup::class);

@@ -13,6 +13,7 @@ use App\Models\Vehicle;
 use App\Models\Weighing;
 use App\Services\CustomerSettlement;
 use Carbon\Carbon;
+use Database\Seeders\BusinessDefaultsSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -52,7 +53,7 @@ class WhatsAppRemovalTest extends TestCase
         parent::setUp();
         Http::preventStrayRequests();
         $this->travelTo(Carbon::parse('2026-10-09 03:00:00', 'UTC'));
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         $this->manager = User::factory()->manager()->create();
         $this->cashier = User::factory()->cashier()->create();
         $this->cash = CashAccount::firstOrFail();

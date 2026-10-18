@@ -16,6 +16,7 @@ use App\Models\Vehicle;
 use App\Services\AuditService;
 use App\Support\BusinessClock;
 use App\Support\Database\WriteTransaction;
+use Database\Seeders\BusinessDefaultsSeeder;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -47,7 +48,7 @@ class ProofStorageTest extends TestCase
         $this->travelTo(now()->startOfSecond());
         $this->disk = Storage::fake('proof-quota-tests-'.getmypid());
         Storage::set('local', $this->disk);
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         $this->manager = User::factory()->manager()->create();
         $this->cashier = User::factory()->cashier()->create();
         $this->driver = User::factory()->create();

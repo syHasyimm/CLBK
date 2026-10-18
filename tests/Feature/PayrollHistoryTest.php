@@ -14,6 +14,7 @@ use App\Models\Vehicle;
 use App\Models\Weighing;
 use App\Services\CashLedger;
 use Carbon\Carbon;
+use Database\Seeders\BusinessDefaultsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -52,7 +53,7 @@ class PayrollHistoryTest extends TestCase
     {
         parent::setUp();
         $this->travelTo(Carbon::parse('2026-10-09 03:00:00', 'UTC'));
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         $this->manager = User::factory()->manager()->create();
         $this->cashier = User::factory()->cashier()->create();
         $this->driver = User::factory()->create();

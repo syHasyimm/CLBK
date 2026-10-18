@@ -18,6 +18,7 @@ use App\Models\Weighing;
 use App\Services\CustomerSettlement;
 use App\Support\BusinessClock;
 use Carbon\Carbon;
+use Database\Seeders\BusinessDefaultsSeeder;
 use Illuminate\Support\Str;
 use Tests\Concerns\DatabaseMigrations;
 use Tests\Concerns\FinanceTest\CustomerPaymentsCases;
@@ -61,7 +62,7 @@ class FinanceTest extends TestCase
         parent::setUp();
         $this->registerLegacyWorkflowTestRoutes();
         $this->travelTo(Carbon::parse('2026-10-09 03:00:00', 'UTC'));
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         $this->manager = User::factory()->manager()->create();
         $this->cashier = User::factory()->cashier()->create();
         $this->driver = User::factory()->create();

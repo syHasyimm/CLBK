@@ -15,7 +15,7 @@ composer setup
 composer dev
 ```
 
-`composer setup` memasang dependensi, menyiapkan APP_KEY bila belum ada, menjalankan migrasi dan seed awal, lalu membangun frontend. Pengulangan mempertahankan APP_KEY dan data yang sudah ada. Seed awal menyediakan kas usaha tanpa saldo, kategori biaya, dan pengaturan usaha.
+`composer setup` memasang dependensi, menyiapkan APP_KEY bila belum ada, menjalankan migrasi dan seed awal, lalu membangun frontend. Pengulangan mempertahankan APP_KEY dan data yang sudah ada. Seed awal menyediakan kas usaha tanpa saldo, kategori biaya, dan pengaturan usaha. Pada `local`/`testing`, `DatabaseSeeder` juga memanggil seeder tiga akun contoh dan data uji filter tanggal; pada produksi, hanya data dasar yang dibuat.
 
 Untuk server MySQL 8.4 yang sudah terpasang di WSL, tersedia perintah berikut dari root proyek:
 
@@ -29,16 +29,18 @@ Jika binary log MySQL aktif, administrator perlu mengaktifkan `log_bin_trust_fun
 
 ## Akun lokal
 
-Untuk membuat akun manajer sendiri:
+Untuk menjalankan seluruh aplikasi dalam container lokal beserta MySQL dan inbox email uji, ikuti [panduan Docker lokal](docs/docker-local.md). Script `scripts/start-local-docker.ps1` menyiapkan container dan data demo secara terpisah dari `.env` development.
+
+Untuk membuat akun manajer sendiri pada database yang belum memiliki pengguna, jalankan sebelum seeder akun contoh:
 
 ```powershell
 php artisan clbk:bootstrap-user
 ```
 
-Untuk akun contoh development:
+Untuk seluruh data awal development beserta akun contoh, cukup satu perintah (sudah dijalankan oleh `composer setup`):
 
 ```powershell
-php artisan db:seed --class=RoleUserSeeder
+php artisan db:seed
 ```
 
 | Role | Email | Password lokal |
@@ -76,11 +78,10 @@ Suite yang sama menguji MySQL untuk autentikasi, transaksi, konkurensi, constrai
 | Folder | Isi |
 | --- | --- |
 | `app/` | Action usaha, model, query, policy, dan layanan |
-| `database/migrations/` | Migrasi awal MySQL; perubahan berikutnya ditambahkan sebagai migrasi baru |
-| `database/schema/clbk.sql` | Tabel, foreign key, constraint, indeks, dan trigger skema awal |
+| `database/migrations/` | Migration PHP per tabel, indeks/check constraint, foreign key, dan trigger MySQL |
 | `resources/` | Halaman React, komponen, CSS, dan template cetak |
 | `routes/` | Rute aplikasi dan scheduler |
 | `tests/` | Pengujian unit dan integrasi MySQL |
 | `docs/` | Catatan alur bisnis dan panduan pemeliharaan |
 
-Panduan [backup/restore](docs/backup-restore.md) menjelaskan arsip ZIP bertanda tangan yang berisi data MySQL dalam `database.jsonl` dan bukti privat. Konfigurasi deploy dan paket aplikasi desktop/mobile dikeluarkan selama fokus pengembangan web lokal.
+Panduan [backup/restore](docs/backup-restore.md) menjelaskan arsip ZIP bertanda tangan yang berisi data MySQL dalam `database.jsonl` dan bukti privat. Untuk menjalankan aplikasi web di Coolify dengan Dockerfile, ikuti [panduan deployment](DEPLOY.md). Image memakai PHP-FPM dan Nginx pada port 8080, database MySQL terpisah, dan volume persisten untuk data serta backup.

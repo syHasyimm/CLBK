@@ -2,9 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Database\LegacyMySqlSchema;
 use App\Support\Database\MySqlDatabase;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 final class MySqlInitialize extends Command
@@ -40,20 +42,30 @@ final class MySqlInitialize extends Command
             }
 
             $tables = $database->tables();
-            if (in_array('migrations', $tables, true) && DB::table('migrations')->exists()) {
+            $hasHistory = in_array('migrations', $tables, true) && DB::table('migrations')->exists();
+            if ($hasHistory) {
+                $pending = array_diff(
+                    array_map(fn ($file) => pathinfo($file, PATHINFO_FILENAME), glob(database_path('migrations/*.php'))),
+                    DB::table('migrations')->pluck('migration')->all(),
+                );
                 if (in_array('users', $tables, true) && in_array('database_write_locks', $tables, true) && $database->guardsPresent()) {
                     $this->info('Schema sudah terinisialisasi; tidak ada tabel atau data yang diubah. Maintenance tetap aktif.');
 
                     return self::SUCCESS;
                 }
-                $this->error('Riwayat migrasi sudah terisi tetapi schema/trigger belum lengkap. Inisialisasi ditolak; periksa migrasi atau restore tanpa menghapus data.');
+                if ($pending === [] || DB::table('migrations')->where('migration', LegacyMySqlSchema::MIGRATION)->exists()) {
+                    $this->error('Riwayat migrasi sudah terisi tetapi schema/trigger belum lengkap. Inisialisasi ditolak; periksa migrasi atau restore tanpa menghapus data.');
 
-                return self::FAILURE;
+                    return self::FAILURE;
+                }
             }
 
             foreach ($tables as $table) {
+                if ($table === 'migrations') {
+                    continue;
+                }
                 $query = DB::table($table);
-                // The baseline inserts only the transaction mutex before its triggers.
+                // The mutex is the only row created by the initial migrations.
                 if ($table === 'database_write_locks') {
                     $query->where('id', '<>', 1);
                 }
@@ -69,6 +81,12 @@ final class MySqlInitialize extends Command
                 $this->error('Administrator MySQL perlu menjalankan SET PERSIST log_bin_trust_function_creators=ON; lalu ulangi perintah ini.');
 
                 return self::FAILURE;
+            }
+
+            // Only an interrupted, unrecorded installation with no business data
+            // may be rebuilt. Recorded per-table migrations resume through migrate.
+            if (! $hasHistory && array_diff($tables, ['migrations']) !== []) {
+                Schema::dropAllTables();
             }
 
             if ($this->call('migrate', ['--force' => true]) !== self::SUCCESS) {

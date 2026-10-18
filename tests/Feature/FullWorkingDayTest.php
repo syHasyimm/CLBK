@@ -12,6 +12,7 @@ use App\Models\SortSale;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\Weighing;
+use Database\Seeders\BusinessDefaultsSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -28,7 +29,7 @@ class FullWorkingDayTest extends TestCase
     {
         $this->travelTo(now()->setDate(2026, 10, 16)->setTime(3, 0));
         Storage::fake('local');
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         $manager = User::factory()->manager()->create();
         $cashier = User::factory()->cashier()->create();
         $vehicle = Vehicle::create(['code' => 'UAT-M', 'plate_number' => 'BK UAT 6', 'is_active' => true]);

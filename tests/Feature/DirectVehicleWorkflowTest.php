@@ -156,7 +156,7 @@ class DirectVehicleWorkflowTest extends TestCase
             $this->assertDatabaseCount('sort_sales', 0);
         }
         $this->sort();
-        $migration = require database_path('migrations/2026_10_17_000001_create_clbk_schema.php');
+        $migration = require database_path('migrations/2026_10_18_000039_create_weighings_table.php');
         try {
             $migration->down();
             $this->fail('Rollback discarded a direct record');

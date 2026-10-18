@@ -22,6 +22,7 @@ use App\Models\Weighing;
 use App\Services\BackupService;
 use App\Services\BackupSnapshot;
 use App\Support\BusinessClock;
+use Database\Seeders\BusinessDefaultsSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -51,7 +52,7 @@ class BackupRestoreTest extends TestCase
         DB::purge();
         Storage::forgetDisk('local');
         $this->artisan('migrate', ['--force' => true])->assertSuccessful();
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         $this->manager = User::factory()->manager()->create();
     }
 

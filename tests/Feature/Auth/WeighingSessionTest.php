@@ -36,7 +36,7 @@ class WeighingSessionTest extends TestCase
 
     public function test_database_session_survives_create_cancel_filter_validation_and_save_redirects(): void
     {
-        $this->seed(WeighingDateFilterSeeder::class);
+        $this->seed();
         config([
             'app.url' => 'https://clbk.example.test',
             'session.driver' => 'database', 'session.encrypt' => true,

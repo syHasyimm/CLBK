@@ -11,7 +11,7 @@ php vendor/bin/phpunit --filter WeighingSessionTest
 Untuk pemeriksaan browser pada database development `clbk` yang sudah dimigrasikan:
 
 ```powershell
-php artisan db:seed --class=WeighingDateFilterSeeder
+php artisan db:seed
 ```
 
 Seeder menyediakan mobil **BK 2026 UAT**, konsumen **Konsumen Uji Filter Tanggal**, anggota muat, tiga akun development, dan lima tiket. Seeder hanya diizinkan pada lingkungan local/testing dan menambahkan data contoh ke database development. Pengulangan tidak menggandakan tiket atau mengubah password.

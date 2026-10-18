@@ -7,6 +7,7 @@ use App\Models\CashAccount;
 use App\Models\User;
 use App\Services\BusinessCash;
 use App\Services\CashLedger;
+use Database\Seeders\BusinessDefaultsSeeder;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\DatabaseMigrations;
@@ -18,10 +19,10 @@ class BusinessSettingsTest extends TestCase
 
     public function test_initial_seed_is_idempotent_preserves_edits_and_does_not_create_demo_users_or_balance(): void
     {
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         AppSetting::query()->whereKey('business_name')->first()->update(['value_json' => 'Usaha Sawit']);
         CashAccount::query()->sole()->update(['name' => 'Kas Kantor', 'is_active' => false]);
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         $this->assertDatabaseCount('users', 0);
         $this->assertDatabaseCount('customers', 0);
         $this->assertDatabaseCount('app_settings', 4);
@@ -35,7 +36,7 @@ class BusinessSettingsTest extends TestCase
 
     public function test_manager_can_update_business_identity_with_audit_and_fixed_rules_remain_unchanged(): void
     {
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         $manager = User::factory()->manager()->create();
         $this->actingAs($manager)->get(route('settings.business.edit'))->assertInertia(fn (Assert $page) => $page->component('Settings/Business')->where('settings.business_timezone', 'Asia/Jakarta')->where('settings.weight_tolerance_basis_points', 200));
         $this->patch(route('settings.business.update'), ['business_name' => 'CLBK TOKE Baru', 'receipt_prefix' => 'CLBK26'])->assertSessionHasNoErrors();
@@ -59,8 +60,8 @@ class BusinessSettingsTest extends TestCase
         $cash->update(['is_active' => false]);
         $original = $cash->fresh()->getAttributes();
 
-        $this->seed();
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
+        $this->seed(BusinessDefaultsSeeder::class);
         $this->assertDatabaseCount('cash_accounts', 1);
         $this->assertSame($original, $cash->fresh()->getAttributes());
         $this->assertSame($cash->id, app(BusinessCash::class)->account()->id);
@@ -70,7 +71,7 @@ class BusinessSettingsTest extends TestCase
 
     public function test_timezone_tolerance_and_invalid_receipt_prefix_cannot_be_submitted(): void
     {
-        $this->seed();
+        $this->seed(BusinessDefaultsSeeder::class);
         $this->actingAs(User::factory()->manager()->create());
         $data = ['business_name' => 'CLBK', 'receipt_prefix' => 'CLBK'];
         $this->patch(route('settings.business.update'), $data + ['business_timezone' => 'UTC'])->assertSessionHasErrors('business_timezone');

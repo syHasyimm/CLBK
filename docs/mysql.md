@@ -27,11 +27,32 @@ Isi `.env` untuk aplikasi dan `.env.testing` untuk pengujian. Jangan menyimpan k
 
 ## Skema awal
 
-Migrasi `2026_10_17_000001_create_clbk_schema.php` memasang `database/schema/clbk.sql` melalui PDO, termasuk trigger. Migrasi hanya boleh berjalan pada database tanpa data usaha dan tidak bergantung pada klien CLI MySQL. Setelah migrasi, jalankan `php artisan db:seed` dan buat akun manajer melalui `clbk:bootstrap-user` atau akun contoh melalui `RoleUserSeeder`.
+Seluruh definisi berada di `database/migrations/`, tanpa memuat schema dump SQL:
+
+- `2026_10_18_000000_*`: pemeriksaan MySQL 8.4 dan persyaratan binary log untuk pemasangan trigger sebelum membuat tabel.
+- `2026_10_18_000001_*` sampai `000040_*`: satu migration per tabel menggunakan `Schema::create`, termasuk kolom, indeks, dan check constraint. Tipe uang/gram, nullability, default, dan collation tetap sama.
+- `2026_10_18_000100_*`: foreign key setelah semua tabel tersedia. Urutan ini menangani relasi dua arah `users` dan `vehicles` tanpa mematikan foreign key checks.
+- `2026_10_18_000200_*` sampai `000222_*`: trigger dikelompokkan per tabel. SQL khusus MySQL untuk check constraint, expression index, dan trigger ditulis langsung di migration PHP; tidak ada file SQL eksternal atau proses impor melalui CLI.
+
+Untuk database produksi baru, dari direktori proyek jalankan:
+
+```sh
+php artisan migrate --force
+php artisan db:seed --force
+php artisan clbk:bootstrap-user
+php artisan clbk:database-ready
+php artisan up
+```
+
+Di lokal, `--force` boleh dihilangkan. `php artisan db:seed` menjalankan `DatabaseSeeder`: data dasar, tiga akun contoh, lalu data uji filter tanggal pada `local`/`testing`. Pada produksi, hanya data dasar yang dibuat; akun awal dibuat melalui `clbk:bootstrap-user`.
+
+Untuk database lama yang telah mencatat `2026_10_17_000001_create_clbk_schema`, buat backup lebih dahulu, lalu jalankan `php artisan down`, `php artisan migrate --force`, `php artisan clbk:database-ready`, dan `php artisan up` secara berurutan hanya jika langkah sebelumnya berhasil. Migration baru memverifikasi fingerprint struktur lama (kolom, indeks, foreign key, check constraint, dan trigger) lalu mencatat migration per tabel tanpa membuat ulang tabel atau mengubah data. Riwayat migration lama tetap disimpan. Jika struktur lama berbeda atau tidak lengkap, migrasi berhenti; jangan menghapus riwayat atau menggunakan `migrate:fresh` untuk melewati pemeriksaan.
 
 Rollback skema awal ditolak agar tabel usaha tidak terhapus. `migrate:fresh` hanya digunakan pada database tes yang boleh dihapus. Perubahan skema selanjutnya harus ditulis sebagai migrasi baru.
 
-`clbk:mysql-initialize` membantu melanjutkan instalasi kosong yang terhenti dan mempertahankan maintenance. `clbk:database-ready` memeriksa versi, kelengkapan schema/trigger, dan akun awal. `clbk:doctor --json` memeriksa integritas, backup, kapasitas, dan scheduler.
+`clbk:mysql-initialize` adalah alat pemulihan instalasi kosong, bukan pengganti pemanggilan migration normal. Perintah mempertahankan maintenance dan menolak pemulihan ulang pada database yang memiliki data usaha. Jika belum ada riwayat migration, tabel kosong sisa instalasi gagal dapat dibuat ulang; jika sebagian migration per tabel sudah tercatat, hanya migration yang tersisa yang dijalankan. Schema lengkap tidak diubah. `clbk:database-ready` memeriksa versi, kelengkapan schema/trigger, dan akun awal. `clbk:doctor --json` memeriksa integritas, backup, kapasitas, dan scheduler.
+
+Backup mencatat fingerprint file migration. Setelah berpindah ke migration per tabel, buat backup baru. Untuk memulihkan arsip dari versi lama, gunakan versi source yang sama dengan arsip tersebut terlebih dahulu, lalu jalankan prosedur migrasi di atas. Pemeriksaan kecocokan backup tetap aktif.
 
 ## Pengujian
 
