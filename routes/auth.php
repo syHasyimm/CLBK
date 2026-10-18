@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Middleware\EnsureMailEnabled;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -18,30 +19,33 @@ Route::middleware('guest')->group(function () {
         ->middleware('throttle:auth-public');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
+        ->middleware(EnsureMailEnabled::class)
         ->name('password.request');
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
-        ->middleware('throttle:auth-public')
+        ->middleware(['throttle:auth-public', EnsureMailEnabled::class])
         ->name('password.email');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
+        ->middleware(EnsureMailEnabled::class)
         ->name('password.reset');
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
-        ->middleware('throttle:auth-public')
+        ->middleware(['throttle:auth-public', EnsureMailEnabled::class])
         ->name('password.store');
 });
 
 Route::middleware(['auth', 'active', 'auth.session'])->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
+        ->middleware(EnsureMailEnabled::class)
         ->name('verification.notice');
 
     Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
-        ->middleware(['signed', 'throttle:6,1'])
+        ->middleware(['signed', 'throttle:6,1', EnsureMailEnabled::class])
         ->name('verification.verify');
 
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
-        ->middleware('throttle:6,1')
+        ->middleware(['throttle:6,1', EnsureMailEnabled::class])
         ->name('verification.send');
 
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])

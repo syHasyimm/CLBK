@@ -182,6 +182,26 @@ class SecurityHardeningTest extends TestCase
         $this->assertFalse(config('app.debug'));
     }
 
+    public function test_production_accepts_explicitly_disabled_email_without_smtp(): void
+    {
+        $this->productionConfig();
+        config(['mail.enabled' => false, 'mail.default' => 'array', 'mail.mailers.smtp' => null]);
+
+        app(ProductionSecurity::class)->validate();
+
+        $this->assertFalse(config('app.debug'));
+        $this->assertTrue(config('session.secure'));
+    }
+
+    public function test_disabled_email_cannot_log_sensitive_email_content_in_production(): void
+    {
+        $this->productionConfig();
+        config(['mail.enabled' => false, 'mail.default' => 'log']);
+
+        $this->expectException(RuntimeException::class);
+        app(ProductionSecurity::class)->validate();
+    }
+
     public function test_production_database_reports_omit_sql_bindings_and_exception_chains(): void
     {
         $this->productionConfig();
@@ -205,7 +225,7 @@ class SecurityHardeningTest extends TestCase
         config([
             'app.url' => 'https://clbk.example.test', 'app.debug' => false,
             'session.secure' => true, 'session.http_only' => true, 'session.same_site' => 'lax',
-            'mail.default' => 'smtp',
+            'mail.enabled' => true, 'mail.default' => 'smtp',
             'security.trusted_proxies' => [],
         ]);
     }

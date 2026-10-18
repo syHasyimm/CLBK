@@ -21,15 +21,6 @@ for name in APP_KEY APP_URL DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD TRUSTED_
         exit 1
     fi
 done
-if [ "${MAIL_MAILER:-}" = smtp ]; then
-    for name in MAIL_HOST MAIL_FROM_ADDRESS; do
-        if ! printenv "$name" | grep -q .; then
-            printf 'Environment runtime %s wajib diisi untuk SMTP produksi.\n' "$name" >&2
-            exit 1
-        fi
-    done
-fi
-
 for directory in /data /backups; do
     if ! mountpoint -q "$directory"; then
         printf 'Tambahkan Persistent Storage Coolify dengan Destination Path %s, lalu redeploy.\n' "$directory" >&2

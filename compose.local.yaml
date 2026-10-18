@@ -27,6 +27,7 @@ services:
       SESSION_COOKIE: clbk_docker_local_session
       SESSION_SECURE_COOKIE: "false"
       SESSION_DOMAIN: "null"
+      MAIL_ENABLED: "true"
       MAIL_MAILER: smtp
       MAIL_SCHEME: smtp
       MAIL_HOST: mailpit

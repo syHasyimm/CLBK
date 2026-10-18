@@ -61,7 +61,8 @@ ENV APP_ENV=production \
     SESSION_PATH=/ \
     CACHE_STORE=database \
     QUEUE_CONNECTION=sync \
-    MAIL_MAILER=smtp \
+    MAIL_ENABLED=false \
+    MAIL_MAILER=array \
     LOG_CHANNEL=stderr \
     LOG_LEVEL=warning
 

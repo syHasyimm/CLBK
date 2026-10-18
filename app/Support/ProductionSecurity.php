@@ -42,6 +42,14 @@ final class ProductionSecurity
             throw new RuntimeException('Cookie sesi produksi wajib Secure, HttpOnly, dan SameSite lax atau strict.');
         }
 
+        if (! config('mail.enabled')) {
+            if (config('mail.default') !== 'array') {
+                throw new RuntimeException('Email nonaktif harus menggunakan transport array tanpa pengiriman atau pencatatan isi email.');
+            }
+
+            return;
+        }
+
         if (! $this->deliversMail((string) config('mail.default'))) {
             throw new RuntimeException('Mailer produksi wajib mengirim email; transport log/array dan fallback ke log tidak diizinkan.');
         }

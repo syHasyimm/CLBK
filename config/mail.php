@@ -1,6 +1,10 @@
 <?php
 
+$mailEnabled = env('MAIL_ENABLED', true);
+
 return [
+
+    'enabled' => $mailEnabled,
 
     /*
     |--------------------------------------------------------------------------
@@ -14,7 +18,8 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    // Disabled email must never write reset links or tokens to application logs.
+    'default' => $mailEnabled ? env('MAIL_MAILER', 'log') : 'array',
 
     /*
     |--------------------------------------------------------------------------
