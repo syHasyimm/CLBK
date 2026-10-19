@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { navigationForRole, navigationIsActive, type NavigationItem } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 import { roleLabels } from '@/types/master-data';
+import PwaUpdateNotice from '@/components/pwa/PwaUpdateNotice';
 
 const shortLabels: Record<string, string> = {
     dashboard: 'Dashboard',
@@ -63,6 +64,7 @@ export default function StaffLayout({
             <StaffSidebar items={items} user={user} businessName={business.name} />
             <div className="min-w-0 lg:pl-64 print:pl-0">
                 <ConnectionStatus />
+                <PwaUpdateNotice />
                 <header className="staff-header border-b border-primary/10 bg-card">
                     <div className="mx-auto flex min-h-20 max-w-7xl items-center gap-2.5 px-4 py-4 sm:gap-4 sm:px-8 lg:py-3">
                         <Link

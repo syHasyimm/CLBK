@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { User } from '@/types';
 import { roleLabels } from '@/types/master-data';
+import PwaInstallButton from '@/components/pwa/PwaInstallButton';
 
 const sidebarScrollPositions = new Map<number, number>();
 
@@ -112,6 +113,9 @@ export default function StaffSidebar({
                     </div>
                 ))}
             </nav>
+            <div className="mx-4 mb-4 empty:hidden">
+                <PwaInstallButton />
+            </div>
             <div className="mx-4 mb-5 flex min-w-0 items-center gap-3 rounded-2xl border border-primary/10 bg-secondary/40 p-3.5">
                 <span
                     className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-card text-xs font-semibold text-primary"

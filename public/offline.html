@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#164b37" />
+        <title>Koneksi terputus · CLBK TOKE</title>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                min-height: 100svh;
+                display: grid;
+                place-items: center;
+                padding: 32px 24px;
+                background: #f5f6f0;
+                color: #1c3027;
+                font-family: 'Segoe UI', system-ui, sans-serif;
+            }
+            main {
+                width: 100%;
+                max-width: 420px;
+            }
+            svg {
+                width: 56px;
+                height: 56px;
+                margin-bottom: 36px;
+            }
+            .brand {
+                color: #164b37;
+                font-size: 13px;
+                font-weight: 600;
+                letter-spacing: 0.12em;
+            }
+            h1 {
+                margin: 16px 0;
+                font-size: clamp(30px, 7vw, 40px);
+                line-height: 1.15;
+                letter-spacing: -0.04em;
+            }
+            p {
+                color: #65716a;
+                font-size: 16px;
+                line-height: 1.7;
+            }
+            a {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 48px;
+                margin-top: 16px;
+                padding: 12px 24px;
+                border-radius: 12px;
+                background: #164b37;
+                color: white;
+                font-size: 15px;
+                font-weight: 600;
+                text-decoration: none;
+            }
+            a:focus-visible {
+                outline: 3px solid #267955;
+                outline-offset: 4px;
+            }
+            small {
+                display: block;
+                margin-top: 28px;
+                color: #65716a;
+                line-height: 1.6;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                <rect width="48" height="48" rx="12" fill="#164b37" />
+                <path
+                    d="M24 37V19m0 9c-10 0-14-7-14-15 10 0 14 6 14 15Zm0-5c0-9 6-14 15-14 0 9-6 14-15 14Z"
+                    stroke="#f4f5ed"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                />
+            </svg>
+            <div class="brand">CLBK TOKE</div>
+            <h1>Hubungkan kembali<br />ke ruang kerja Anda.</h1>
+            <p>
+                Aplikasi belum dapat menjangkau server. Periksa koneksi internet, lalu coba buka
+                kembali halaman ini.
+            </p>
+            <a href="">Coba lagi</a>
+            <small
+                >Transaksi dan pembayaran memerlukan koneksi ke server. Aplikasi tidak mengirim
+                ulang transaksi secara otomatis.</small
+            >
+        </main>
+    </body>
+</html>

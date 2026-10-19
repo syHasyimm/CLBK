@@ -4,6 +4,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { requestKey } from '@/lib/idempotency';
 import InputError from '@/components/InputError';
+import { usePwaReloadGuard } from '@/lib/pwa-reload-guard';
 export default function ReverseVoucherForm({
     url,
     version,
@@ -19,6 +20,7 @@ export default function ReverseVoucherForm({
         return_reference: '',
         idempotency_key: requestKey(),
     });
+    usePwaReloadGuard(form.isDirty || form.processing);
     return (
         <section className="mt-6 rounded-xl border bg-card p-6 print:hidden">
             <h2 className="text-lg font-semibold">Pembalikan {number}</h2>

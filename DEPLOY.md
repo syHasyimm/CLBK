@@ -188,6 +188,103 @@ Buat backup dengan source yang sedang berjalan sebelum mengganti versi. Aktifkan
 
 Jangan menjalankan `migrate:fresh`, `db:wipe`, atau menghapus volume untuk memperbaiki deployment berisi data. Arsip backup menyimpan fingerprint migration; pertahankan source yang cocok untuk memulihkan arsip versi lama, dan buat backup baru setelah upgrade.
 
+## PWA Android
+
+PWA dibangun otomatis oleh `npm run build` di stage frontend Docker. Berkas yang
+dihasilkan berada di `public/build/`, termasuk `sw.js` dan
+`manifest.webmanifest`. Ikon berada di `public/pwa/` dan halaman offline di
+`public/offline.html`; seluruhnya sudah masuk image. Tidak ada migration, env,
+port, volume, scheduler, atau layanan tambahan untuk PWA.
+
+### Konfigurasi Coolify/VPS
+
+- Pertahankan Build Pack **Dockerfile**, port container **8080**, dan domain
+  HTTPS yang sudah digunakan. `APP_URL` harus tetap berupa origin HTTPS yang
+  sama dengan alamat yang dibuka pengguna. Pastikan `TRUSTED_PROXIES` dan cookie
+  aman mengikuti langkah 3.
+- Konfigurasi PWA ada di `docker/nginx.conf`, bukan pada menu konfigurasi Nginx
+  untuk Build Pack Static Coolify. Terapkan dengan **build dan redeploy** image;
+  restart container lama tidak mengambil perubahan source.
+- `/build/sw.js` mengirim `Service-Worker-Allowed: /` agar service worker boleh
+  mencakup seluruh aplikasi. Service worker, manifest, ikon, dan halaman offline
+  memakai `Cache-Control: no-cache, max-age=0, must-revalidate`. Aset hasil build
+  dengan hash tetap memakai cache panjang.
+- Bila ada CDN atau aturan cache tambahan di depan Coolify, pastikan aturan
+  tersebut menghormati header origin dan tidak memaksa cache panjang untuk URL
+  PWA di atas. Respons login, Inertia/JSON, transaksi, dan berkas privat juga
+  tidak boleh di-cache secara publik.
+
+Pembaruan pertama ini cukup mengikuti alur backup/deploy pada langkah 7; PWA
+sendiri tidak menambah perubahan skema database. Pertahankan APP_KEY, database,
+dan kedua volume seperti pada deployment biasa.
+
+### Verifikasi sesudah deploy
+
+Gunakan domain produksi sebenarnya bila berbeda dari contoh berikut:
+
+```sh
+curl -fsSI https://ncimproject.tech/build/sw.js
+curl -fsSI https://ncimproject.tech/build/manifest.webmanifest
+curl -fsSI https://ncimproject.tech/offline.html
+curl -fsSI https://ncimproject.tech/pwa/icon-192.png
+```
+
+Semua harus mengembalikan **200** tanpa redirect login. Service worker harus
+bertipe JavaScript dan memiliki `Service-Worker-Allowed: /`; manifest harus
+bertipe `application/manifest+json`. Periksa header revalidasi cache pada semua
+URL tersebut.
+
+1. Di Chrome Android, buka domain produksi. Pilih **Pasang aplikasi** pada login
+   atau menu aplikasi, lalu buka ikon **CLBK** dari layar utama. Jika tombol
+   belum tersedia, periksa menu instalasi Chrome dan status manifest/service
+   worker di DevTools. Tampilan setelah dipasang tidak memiliki bilah alamat.
+2. Sesudah kunjungan online dan service worker aktif, buka ulang aplikasi dalam
+   mode pesawat. Halaman koneksi terputus harus tampil dengan tombol **Coba
+   lagi**. Kembalikan koneksi lalu coba lagi; login dan sesi tetap memakai
+   mekanisme Laravel yang sudah ada.
+3. Login dan gunakan aplikasi secara normal. Di **DevTools > Application > Cache
+   Storage**, yang boleh tersimpan oleh PWA hanyalah aset build, ikon publik,
+   dan halaman offline. Halaman akun, laporan, respons JSON, dan bukti privat
+   tidak boleh muncul. `/up` dan `/healthz` selalu meminta server.
+4. Pada deployment versi berikutnya, biarkan aplikasi versi lama terbuka lalu
+   kembali ke tab/aplikasi. Pemeriksaan pembaruan berjalan ketika aplikasi
+   terlihat kembali, koneksi pulih, serta setiap jam. Jika worker baru sudah
+   siap, tampil **Pembaruan tersedia** dengan pilihan **Nanti** atau **Perbarui**.
+5. Isi formulir sebelum mencoba pembaruan. Tombol **Perbarui** harus nonaktif
+   selama ada perubahan atau permintaan Inertia berlangsung. Setelah perubahan
+   selesai/disisihkan, pengguna dapat memperbarui. Tab lain tidak dimuat ulang
+   otomatis oleh pemberitahuan PWA.
+
+Transaksi dan pembayaran tetap memerlukan server. PWA tidak menyediakan input
+transaksi offline, antrean pengiriman ulang, atau notifikasi push.
+
+### Pengembangan lokal dan pemulihan
+
+Service worker dinonaktifkan pada `npm run dev` untuk menghindari gangguan HMR.
+Uji build PWA melalui Docker lokal di `http://localhost:8088`, mengikuti
+`docs/docker-local.md`. `localhost` dapat memakai service worker tanpa HTTPS;
+mengakses IP LAN melalui HTTP dari Android tidak memenuhi syarat secure context.
+Gunakan staging HTTPS untuk pengujian pada perangkat Android. Server bawaan
+`php artisan serve` tidak memasang header Nginx di atas, sehingga bukan jalur
+pengujian untuk cakupan root service worker ini.
+
+Jika ada perangkat yang masih memakai versi lama, kembali ke aplikasi saat
+online dan gunakan **Perbarui**, atau tutup semua tab/aplikasi CLBK lalu buka
+kembali. Untuk diagnosis di perangkat uji, service worker dapat dilepas melalui
+**DevTools > Application > Service Workers > Unregister** lalu muat ulang.
+Menghapus seluruh site data juga menghapus sesi login, sehingga tidak diperlukan
+untuk pembaruan biasa.
+
+Jika perlu rollback source, deploy ulang image versi yang diketahui baik melalui
+Coolify dengan database dan volume yang sama. Service worker dari image tersebut
+akan diperiksa sebagai pembaruan berikutnya. Gunakan image yang masih menyediakan
+endpoint service worker; rollback ke versi sebelum fitur PWA memerlukan worker
+penghentian pada URL yang sama untuk melepas instalasi worker lama. Pengguna yang
+sedang offline baru dapat mengambil versi rollback setelah kembali online.
+
+Referensi: [Vite PWA untuk Laravel](https://vite-pwa-org.netlify.app/frameworks/laravel.html),
+[fallback offline Workbox](https://developer.chrome.com/docs/workbox/managing-fallback-responses).
+
 ## Build manual
 
 Dari root repository pada komputer/server dengan Docker Engine aktif:

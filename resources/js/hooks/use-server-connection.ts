@@ -34,12 +34,14 @@ export function useServerConnection() {
         const interval = window.setInterval(() => void check(), 30000);
         window.addEventListener('online', check);
         window.addEventListener('offline', offline);
+        window.addEventListener('clbk:connection-lost', offline);
         return () => {
             active = false;
             request?.abort();
             window.clearInterval(interval);
             window.removeEventListener('online', check);
             window.removeEventListener('offline', offline);
+            window.removeEventListener('clbk:connection-lost', offline);
         };
     }, []);
     return connected;

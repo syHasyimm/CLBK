@@ -6,6 +6,11 @@
 
         <title inertia>{{ config('app.name', 'CLBK TOKE') }}</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+        <meta name="theme-color" content="#164b37">
+        <link rel="apple-touch-icon" href="/pwa/apple-touch-icon.png">
+        @if (! app(\Illuminate\Foundation\Vite::class)->isRunningHot())
+            <link rel="manifest" href="/build/manifest.webmanifest">
+        @endif
 
         <!-- Scripts -->
         @routes

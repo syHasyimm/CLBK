@@ -5,6 +5,7 @@ import TextInput from '@/components/TextInput';
 import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
+import { usePwaReloadGuard } from '@/lib/pwa-reload-guard';
 
 export default function UpdateProfileInformation({
     mustVerifyEmail,
@@ -17,11 +18,13 @@ export default function UpdateProfileInformation({
 }) {
     const user = usePage().props.auth.user;
 
-    const { data, setData, patch, reset, errors, processing, recentlySuccessful } = useForm({
-        name: user.name,
-        email: user.email,
-        current_password: '',
-    });
+    const { data, setData, patch, reset, errors, processing, recentlySuccessful, isDirty } =
+        useForm({
+            name: user.name,
+            email: user.email,
+            current_password: '',
+        });
+    usePwaReloadGuard(isDirty || processing);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();

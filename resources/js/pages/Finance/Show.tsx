@@ -10,6 +10,7 @@ import VoucherDocument from '@/features/finance/components/VoucherDocument';
 
 import type { FinanceKind, FinanceDocument } from '@/types/finance';
 import { financeLabels } from '@/types/finance';
+import { usePwaReloadGuard } from '@/lib/pwa-reload-guard';
 export default function Show({
     kind,
     record,
@@ -33,6 +34,7 @@ export default function Show({
     attachments: { id: number; original_name: string; size_bytes: number }[];
 }) {
     const proof = useForm<{ proof: File | null }>({ proof: null });
+    usePwaReloadGuard(proof.isDirty || proof.processing);
 
     const sortReceipt = kind === 'receipt' && source?.kind === 'sort';
     const label = sortReceipt ? 'Penerimaan Penjualan Sortir' : financeLabels[kind];

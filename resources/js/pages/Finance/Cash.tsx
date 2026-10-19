@@ -14,6 +14,7 @@ import { rupiah } from '@/lib/currency';
 import { dateTime } from '@/lib/dates';
 import { requestKey } from '@/lib/idempotency';
 import type { FinanceKind, PaginatedData } from '@/types/finance';
+import { usePwaReloadGuard } from '@/lib/pwa-reload-guard';
 type CashEntry = {
     id: number;
     number: string | null;
@@ -70,6 +71,7 @@ export default function Cash({
         backdate_reason: '',
         idempotency_key: requestKey(),
     });
+    usePwaReloadGuard(form.isDirty || form.processing || accountCreation.processing);
     function field(
         key: 'kind' | 'amount_idr' | 'occurred_at' | 'reason' | 'reference' | 'backdate_reason',
         label: string,

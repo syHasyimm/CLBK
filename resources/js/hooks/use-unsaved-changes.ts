@@ -1,8 +1,10 @@
 import type { PendingVisit } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
+import { usePwaReloadGuard } from '@/lib/pwa-reload-guard';
 
 export default function useUnsavedChanges(dirty: boolean) {
+    usePwaReloadGuard(dirty);
     const [pending, setPending] = useState<PendingVisit | null>(null);
     const confirmed = useRef<PendingVisit | null>(null);
     useEffect(() => {

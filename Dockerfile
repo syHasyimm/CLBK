@@ -32,7 +32,7 @@ FROM node:24-bookworm-slim AS assets
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev
-COPY tsconfig.json vite.config.ts ./
+COPY tsconfig.json tsconfig.pwa.json vite.config.ts ./
 COPY resources ./resources
 COPY public ./public
 # TypeScript resolves ziggy-js through the Composer package in tsconfig.json.

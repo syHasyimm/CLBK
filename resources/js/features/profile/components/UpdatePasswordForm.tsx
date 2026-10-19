@@ -5,16 +5,18 @@ import TextInput from '@/components/TextInput';
 import { Transition } from '@headlessui/react';
 import { useForm } from '@inertiajs/react';
 import { FormEventHandler, useRef } from 'react';
+import { usePwaReloadGuard } from '@/lib/pwa-reload-guard';
 
 export default function UpdatePasswordForm({ className = '' }: { className?: string }) {
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
 
-    const { data, setData, errors, put, reset, processing, recentlySuccessful } = useForm({
+    const { data, setData, errors, put, reset, processing, recentlySuccessful, isDirty } = useForm({
         current_password: '',
         password: '',
         password_confirmation: '',
     });
+    usePwaReloadGuard(isDirty || processing);
 
     const updatePassword: FormEventHandler = (e) => {
         e.preventDefault();

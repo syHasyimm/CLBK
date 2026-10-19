@@ -5,14 +5,16 @@ import TextInput from '@/components/TextInput';
 import AuthLayout from '@/layouts/AuthLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
+import { usePwaReloadGuard } from '@/lib/pwa-reload-guard';
 
 export default function ResetPassword({ token, email }: { token: string; email: string }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, isDirty } = useForm({
         token: token,
         email: email,
         password: '',
         password_confirmation: '',
     });
+    usePwaReloadGuard(isDirty || processing);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();

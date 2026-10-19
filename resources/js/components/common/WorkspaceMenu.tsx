@@ -12,6 +12,7 @@ import { Link } from '@inertiajs/react';
 import { ArrowUpRight, Check, Grid2X2, X } from 'lucide-react';
 import { Dialog } from 'radix-ui';
 import type { ComponentProps } from 'react';
+import PwaInstallButton from '@/components/pwa/PwaInstallButton';
 
 const descriptions: Record<string, string> = {
     dashboard: 'Ringkasan aktivitas usaha',
@@ -84,6 +85,9 @@ export default function WorkspaceMenu({
                     className="staff-navigation-scroll min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 sm:px-6"
                 >
                     <WorkspaceMenuLinks items={items} role={role} onNavigate={onNavigate} />
+                    <div className="mt-5 empty:hidden">
+                        <PwaInstallButton />
+                    </div>
                 </nav>
                 <div className="cashier-menu-footer shrink-0 border-t border-primary/10 bg-secondary/30 px-5 pt-3 text-xs text-muted-foreground sm:px-6">
                     <span className="inline-flex items-center gap-2">

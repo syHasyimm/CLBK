@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/InputError';
+import { usePwaReloadGuard } from '@/lib/pwa-reload-guard';
 
 export interface BackupStatus {
     files: { id: string; bytes: number; created_at: string }[];
@@ -14,6 +15,7 @@ export interface BackupStatus {
 
 export default function BackupPanel({ status }: { status: BackupStatus }) {
     const backup = useForm({ current_password: '' });
+    usePwaReloadGuard(backup.isDirty || backup.processing);
     function create(event: FormEvent) {
         event.preventDefault();
         backup.post(route('backups.store'), {

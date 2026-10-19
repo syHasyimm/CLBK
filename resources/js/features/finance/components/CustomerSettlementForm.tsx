@@ -9,6 +9,7 @@ import { operationError } from '@/lib/form';
 import { rupiah } from '@/lib/currency';
 import { weight } from '@/lib/weight';
 import type { Entitlement } from '@/types/finance';
+import { usePwaReloadGuard } from '@/lib/pwa-reload-guard';
 
 export default function CustomerSettlementForm({
     recipient,
@@ -33,6 +34,7 @@ export default function CustomerSettlementForm({
         notes: '',
         idempotency_key: requestKey(),
     });
+    usePwaReloadGuard(form.isDirty || form.processing);
     const ready =
         cash?.is_active &&
         cash.balance_idr >= settlement.remaining_idr &&

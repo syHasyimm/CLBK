@@ -6,6 +6,7 @@ import AuthLayout from '@/layouts/AuthLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 import { ArrowRight, LoaderCircle } from 'lucide-react';
+import { usePwaReloadGuard } from '@/lib/pwa-reload-guard';
 
 export default function Login({
     status,
@@ -14,11 +15,12 @@ export default function Login({
     status?: string;
     canResetPassword: boolean;
 }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, isDirty } = useForm({
         email: '',
         password: '',
         remember: false,
     });
+    usePwaReloadGuard(isDirty || processing);
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
         post(route('login'), { onFinish: () => reset('password') });
