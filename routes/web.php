@@ -7,6 +7,7 @@ use App\Http\Controllers\CashController;
 use App\Http\Controllers\DriverCustomerController;
 use App\Http\Controllers\FinanceAttachmentController;
 use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\FonnteWebhookController;
 use App\Http\Controllers\MasterData\MasterDataController;
 use App\Http\Controllers\MasterData\ReferenceDataController;
 use App\Http\Controllers\OperationalReferenceController;
@@ -18,7 +19,15 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SummaryController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeighingController;
+use App\Http\Controllers\WhatsAppConnectionController;
+use App\Http\Controllers\WhatsAppController;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/integrations/fonnte/webhook/{secret}', FonnteWebhookController::class)
+    ->where('secret', '[A-Za-z0-9_-]{32,128}')
+    ->withoutMiddleware([PreventRequestForgery::class])
+    ->middleware('throttle:120,1')->name('integrations.fonnte.webhook');
 
 Route::get('/', function () {
     return redirect()->route(auth()->check() ? 'dashboard' : 'login');
@@ -52,6 +61,14 @@ Route::middleware(['auth', 'active', 'auth.session'])->group(function () {
     Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update']);
     Route::patch('/users/{user}/status', [UserController::class, 'status'])->name('users.status');
     Route::get('/settings/business', [BusinessSettingsController::class, 'edit'])->name('settings.business.edit');
+    Route::get('/settings/whatsapp', [WhatsAppController::class, 'index'])->name('whatsapp.index');
+    Route::redirect('/whatsapp', '/settings/whatsapp');
+    Route::put('/settings/whatsapp/connection', [WhatsAppConnectionController::class, 'update'])->middleware('throttle:password-recheck')->name('whatsapp.connection.update');
+    Route::post('/settings/whatsapp/connection/check', [WhatsAppConnectionController::class, 'check'])->middleware('throttle:whatsapp-connection')->name('whatsapp.connection.check');
+    Route::patch('/settings/whatsapp', [WhatsAppController::class, 'update'])->name('whatsapp.settings');
+    Route::post('/whatsapp/test', [WhatsAppController::class, 'test'])->middleware('throttle:password-recheck')->name('whatsapp.test');
+    Route::get('/whatsapp/{message}', [WhatsAppController::class, 'show'])->whereNumber('message')->name('whatsapp.show');
+    Route::post('/whatsapp/{message}/retry', [WhatsAppController::class, 'retry'])->whereNumber('message')->middleware('throttle:password-recheck')->name('whatsapp.retry');
     Route::patch('/settings/business', [BusinessSettingsController::class, 'update'])->name('settings.business.update');
     Route::post('/settings/backups', [BackupController::class, 'store'])->middleware('throttle:password-recheck')->name('backups.store');
     Route::get('/settings/backups/{backup}', [BackupController::class, 'download'])

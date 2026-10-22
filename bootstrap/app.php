@@ -43,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['token']);
         $exceptions->report(fn (Throwable $exception) => app(ReportDatabaseFailure::class)->report($exception));
         $exceptions->respond(fn (Response $response) => app(SecurityHeaders::class)->apply(request(), $response)
         );

@@ -6,6 +6,7 @@ import FormField, { type FieldDefinition, type SelectOption } from '@/components
 import UnsavedChangesGuard from '@/components/common/UnsavedChangesGuard';
 import InputError from '@/components/InputError';
 import { Button } from '@/components/ui/button';
+import WhatsAppConsent from '@/features/settings/components/WhatsAppConsent';
 
 export default function Create({
     fields,
@@ -14,9 +15,10 @@ export default function Create({
     fields: FieldDefinition[];
     options?: Record<string, SelectOption[]>;
 }) {
-    const initial: Record<string, string> = Object.fromEntries(
+    const initial: Record<string, string | boolean> = Object.fromEntries(
         fields.map((field) => [field.key, '']),
     );
+    initial.whatsapp_enabled = false;
     const form = useForm(initial);
 
     function submit(event: FormEvent) {
@@ -76,13 +78,20 @@ export default function Create({
                         >
                             <FormField
                                 field={field}
-                                value={form.data[field.key] ?? ''}
+                                value={String(form.data[field.key] ?? '')}
                                 error={form.errors[field.key]}
                                 options={options[field.key]}
                                 onChange={(value) => form.setData(field.key, value)}
                             />
                         </div>
                     ))}
+                    <div className="sm:col-span-2">
+                        <WhatsAppConsent
+                            checked={Boolean(form.data.whatsapp_enabled)}
+                            onChange={(value) => form.setData('whatsapp_enabled', value)}
+                            error={form.errors.whatsapp_enabled}
+                        />
+                    </div>
                     <InputError message={form.errors.operation} className="sm:col-span-2" />
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-3 border-t px-5 py-5 sm:px-6">

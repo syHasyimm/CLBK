@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import type { MasterRecord } from '@/types/master-data';
 import { Link, useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
+import WhatsAppConsent from '@/features/settings/components/WhatsAppConsent';
 
 export interface MasterFormProps {
     resource: string;
@@ -16,6 +17,7 @@ export interface MasterFormProps {
 }
 export default function MasterDataForm({ resource, fields, options, record }: MasterFormProps) {
     const initial: Record<string, string | boolean> = { is_active: record?.is_active ?? true };
+    if (resource === 'customers') initial.whatsapp_enabled = record?.whatsapp_enabled === true;
     fields.forEach((field) => {
         initial[field.key] =
             record?.[field.key] === null || record?.[field.key] === undefined
@@ -47,6 +49,15 @@ export default function MasterDataForm({ resource, fields, options, record }: Ma
                 <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
                     Harga TBS pabrik dikelola terpisah melalui riwayat harga.
                 </p>
+            )}
+            {resource === 'customers' && (
+                <div className="mt-6">
+                    <WhatsAppConsent
+                        checked={Boolean(form.data.whatsapp_enabled)}
+                        onChange={(value) => form.setData('whatsapp_enabled', value)}
+                        error={form.errors.whatsapp_enabled}
+                    />
+                </div>
             )}
             <div className="mt-7">
                 <ActiveCheckbox

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Weighing;
 use App\Services\AuditService;
 use App\Services\IdempotencyService;
+use App\Services\WhatsApp\NotificationOutbox;
 use App\Support\BusinessClock;
 use App\Support\Database\WriteTransaction;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +60,8 @@ class VoidWeighing
                     $record->update(['status' => 'voided', 'voided_at' => app(BusinessClock::class)->now(), 'voided_by' => $actor->id,
                         'void_reason' => $reason, 'version' => $record->version + 1]);
                     $audit->record($actor, 'void', $record, $before, $audit->snapshot($record));
+
+                    app(NotificationOutbox::class)->weighing($record, true);
 
                     return $record->id;
                 });

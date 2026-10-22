@@ -44,10 +44,8 @@ try {
             throw '.env.docker.local hilang, tetapi volume database lokal sudah ada. Pulihkan file env lama agar password dan APP_KEY tetap sesuai.'
         }
         $httpPort = Get-FreeLocalPort 8088
-        $mailPort = Get-FreeLocalPort 8025
         $settings = @(
             "CLBK_LOCAL_HTTP_PORT=$httpPort"
-            "CLBK_LOCAL_MAIL_PORT=$mailPort"
             "CLBK_LOCAL_APP_KEY=base64:$(New-LocalSecret)"
             "CLBK_LOCAL_DB_PASSWORD=$(New-LocalSecret)"
             "CLBK_LOCAL_MYSQL_ROOT_PASSWORD=$(New-LocalSecret)"
@@ -56,7 +54,7 @@ try {
     }
 
     Invoke-LocalCompose config --quiet
-    Invoke-LocalCompose up --detach --build --quiet-build --wait --wait-timeout 180
+    Invoke-LocalCompose up --detach --build --quiet-build --remove-orphans --wait --wait-timeout 180
     Invoke-LocalCompose exec -T --user www-data app php artisan migrate --force --no-interaction
 
     & docker compose --env-file $environmentFile -f $composeFile exec -T app test -f /data/storage/framework/local-initialized
@@ -71,10 +69,8 @@ try {
     Invoke-LocalCompose ps
     $savedSettings = Get-Content -LiteralPath $environmentFile
     $httpPort = ($savedSettings | Where-Object { $_ -match '^CLBK_LOCAL_HTTP_PORT=' }) -replace '^CLBK_LOCAL_HTTP_PORT=', ''
-    $mailPort = ($savedSettings | Where-Object { $_ -match '^CLBK_LOCAL_MAIL_PORT=' }) -replace '^CLBK_LOCAL_MAIL_PORT=', ''
     & (Join-Path $PSScriptRoot 'check-local-docker-assets.ps1') -BaseUrl "http://localhost:$httpPort"
     Write-Host "Aplikasi: http://localhost:$httpPort/login"
-    Write-Host "Inbox email uji: http://localhost:$mailPort"
     Write-Host 'Akun demo lokal: lihat docs/docker-local.md. APP_KEY dan password MySQL disimpan di .env.docker.local.'
 } finally {
     Pop-Location

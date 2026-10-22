@@ -1,6 +1,8 @@
 # Deploy CLBK dengan Dockerfile dan Coolify
 
-Image menjalankan PHP 8.4-FPM, Nginx pada port **8080**, dan scheduler Laravel. React dibangun saat build memakai Node.js 24; Node.js tidak diperlukan di container produksi. MySQL **8.4** berjalan sebagai resource terpisah. Alur ini memakai HTTPS dari proxy Coolify.
+Image menjalankan PHP 8.4-FPM, Nginx pada port **8080**, scheduler Laravel, dan worker antrean WhatsApp. React dibangun saat build memakai Node.js 24; Node.js tidak diperlukan di container produksi. MySQL **8.4** berjalan sebagai resource terpisah. Alur ini memakai HTTPS dari proxy Coolify.
+
+Untuk mengaktifkan notifikasi WhatsApp melalui Fonnte, ikuti [panduan WhatsApp](docs/whatsapp-fonnte.md). Worker memakai koneksi database `whatsapp` meskipun antrean bawaan aplikasi tetap `sync`. Manajer memasukkan token dan menguji koneksi melalui Pengaturan → Notifikasi WhatsApp. Token disimpan terenkripsi menggunakan APP_KEY; pertahankan kunci tersebut untuk restore. Pengiriman nonaktif sampai koneksi teruji, saklar pengiriman, dan persetujuan konsumen dilengkapi. Hentikan worker sebelum restore backup.
 
 ## 1. Siapkan resource aplikasi
 

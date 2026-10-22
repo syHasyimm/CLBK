@@ -31,6 +31,16 @@ return [
 
     'connections' => [
 
+        // Always asynchronous; unaffected by the application's default sync queue.
+        'whatsapp' => [
+            'driver' => 'database',
+            'connection' => null,
+            'table' => 'jobs',
+            'queue' => 'whatsapp',
+            'retry_after' => 120,
+            'after_commit' => false,
+        ],
+
         'sync' => [
             'driver' => 'sync',
         ],

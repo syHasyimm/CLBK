@@ -6,6 +6,7 @@ use App\Enums\MasterResource;
 use App\Enums\UserRole;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\WhatsApp\PhoneNumber;
 use App\Support\Database\WriteTransaction;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
@@ -25,6 +26,12 @@ class SaveMasterData
                 $record = $id === null ? new $model : $model::query()->findOrFail($id);
                 Gate::forUser($actor->fresh())->authorize($id === null ? 'create' : 'update', $id === null ? $model : $record);
                 unset($data['code']);
+                if ($resource === MasterResource::Customers && ($data['whatsapp_enabled'] ?? $record->whatsapp_enabled)) {
+                    $phone = array_key_exists('phone', $data) ? $data['phone'] : $record->phone;
+                    if (PhoneNumber::normalize($phone) === null) {
+                        throw ValidationException::withMessages(['phone' => 'Isi nomor WhatsApp Indonesia yang valid.']);
+                    }
+                }
                 if ($id === null) {
                     $data['code'] = $this->nextCode($resource);
                 }

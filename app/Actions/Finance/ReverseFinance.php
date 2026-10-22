@@ -3,12 +3,14 @@
 namespace App\Actions\Finance;
 
 use App\Enums\FinanceKind;
+use App\Models\CustomerPayment;
 use App\Models\FinanceDocument;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\CashLedger;
 use App\Services\IdempotencyService;
 use App\Services\ProfitLedger;
+use App\Services\WhatsApp\NotificationOutbox;
 use App\Support\BusinessClock;
 use App\Support\Database\WriteTransaction;
 use Illuminate\Support\Facades\DB;
@@ -42,6 +44,10 @@ class ReverseFinance
                         'reversal_business_date' => $clock->date($clock->now()), 'reversed_by' => $actor->id,
                         'reversal_reason' => $reason, 'return_reference' => $reference]);
                     $audit->record($actor, 'reverse-finance', $record, $before, $audit->snapshot($record));
+
+                    if ($record instanceof CustomerPayment) {
+                        app(NotificationOutbox::class)->payment($record, true);
+                    }
 
                     return $record->id;
                 });

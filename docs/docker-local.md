@@ -6,9 +6,9 @@ Jalankan Docker Desktop, lalu dari PowerShell di root proyek:
 powershell -ExecutionPolicy Bypass -File .\scripts\start-local-docker.ps1
 ```
 
-Script membangun image dan menjalankan aplikasi, MySQL 8.4, serta Mailpit. Default aplikasi **http://localhost:8088/login**, inbox email uji **http://localhost:8025**. Jika port sudah dipakai pada setup pertama, script memilih port berikutnya dan menampilkan URL yang digunakan.
+Script membangun image dan menjalankan aplikasi serta MySQL 8.4. Default aplikasi **http://localhost:8088/login**. Jika port sudah dipakai pada setup pertama, script memilih port berikutnya dan menampilkan URL yang digunakan. Container layanan yang sudah dihapus dari konfigurasi dibersihkan otomatis saat script dijalankan ulang.
 
-Database `clbk_local` dan volume project `clbk-local` terpisah dari `.env`, database development lain, dan VPS. MySQL tidak dipublikasikan ke host. Aplikasi dan inbox hanya menerima koneksi dari komputer lokal (`127.0.0.1`). Profil lokal mengaktifkan `MAIL_ENABLED=true` secara eksplisit untuk pengujian. Email ditampung Mailpit dan tidak dikirim ke penerima sebenarnya. Image produksi menggunakan `MAIL_ENABLED=false` secara default dan tidak membutuhkan SMTP.
+Database `clbk_local` dan volume project `clbk-local` terpisah dari `.env`, database development lain, dan VPS. MySQL tidak dipublikasikan ke host. Aplikasi hanya menerima koneksi dari komputer lokal (`127.0.0.1`). Profil lokal menggunakan `MAIL_ENABLED=false` dan `MAIL_MAILER=array`, sehingga email dinonaktifkan dan tidak membutuhkan SMTP. Image produksi juga menonaktifkan email secara default.
 
 `.env.docker.local` dibuat sekali dengan APP_KEY dan password MySQL acak. File ini diabaikan Git dan build Docker. Simpan file tersebut bersama volume; jangan menghapusnya untuk melakukan restart. Kunci tidak diganti ketika script dijalankan ulang.
 

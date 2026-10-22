@@ -12,6 +12,7 @@ use App\Models\Weighing;
 use App\Services\AuditService;
 use App\Services\DriverVehicleAssignment;
 use App\Services\IdempotencyService;
+use App\Services\WhatsApp\NotificationOutbox;
 use App\Support\BusinessClock;
 use App\Support\Database\WriteTransaction;
 use App\Support\DocumentNumber;
@@ -77,6 +78,8 @@ class SaveDirectWeighing
                     $audit = app(AuditService::class);
                     $audit->record($actor, 'save-direct', $record, null, $audit->snapshot($record)
                         + ['items' => $record->items->toArray(), 'loaders' => $record->loaders->toArray()]);
+
+                    app(NotificationOutbox::class)->weighing($record);
 
                     return $record->id;
                 });

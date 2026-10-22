@@ -9,6 +9,7 @@ use App\Support\Database\MySqlSchemaMetadata;
 use Database\Seeders\BusinessDefaultsSeeder;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 use Tests\Concerns\DatabaseMigrations;
 use Tests\TestCase;
@@ -19,6 +20,7 @@ class TableMigrationsTest extends TestCase
 
     public function test_per_table_migrations_preserve_the_complete_previous_schema(): void
     {
+        $this->removeNotificationExtension();
         $this->assertSame(LegacyMySqlSchema::FINGERPRINT, app(MySqlSchemaMetadata::class)->fingerprint());
         $this->assertCount(41, app(MySqlDatabase::class)->tables()); // 40 application tables + migrations.
         $this->assertCount(85, app(MySqlDatabase::class)->foreignKeys());
@@ -43,6 +45,7 @@ class TableMigrationsTest extends TestCase
 
     public function test_existing_baseline_is_adopted_without_recreating_tables_or_changing_data(): void
     {
+        $completeFingerprint = app(MySqlSchemaMetadata::class)->fingerprint();
         $this->seed(BusinessDefaultsSeeder::class);
         $manager = User::factory()->manager()->create();
         $before = $manager->fresh()->getRawOriginal();
@@ -57,12 +60,13 @@ class TableMigrationsTest extends TestCase
 
         $this->artisan('migrate', ['--force' => true])->assertSuccessful();
 
-        $this->assertSame([], $ddl, 'Adopting the historical schema must not execute DDL.');
+        $historicalDdl = array_filter($ddl, fn ($sql) => ! str_contains($sql, 'whatsapp_'));
+        $this->assertSame([], array_values($historicalDdl), 'Only the new WhatsApp extension may execute DDL.');
         $this->assertTrue($before === $manager->fresh()->getRawOriginal(), 'The existing account must remain unchanged.');
         $this->assertSame($settings, DB::table('app_settings')->orderBy('key')->get()->toJson());
         $this->assertDatabaseHas('migrations', ['migration' => LegacyMySqlSchema::MIGRATION, 'batch' => 1]);
         $this->assertDatabaseCount('migrations', count(glob(database_path('migrations/*.php'))) + 1);
-        $this->assertSame(LegacyMySqlSchema::FINGERPRINT, app(MySqlSchemaMetadata::class)->fingerprint());
+        $this->assertSame($completeFingerprint, app(MySqlSchemaMetadata::class)->fingerprint());
         $this->assertTrue(app(MySqlDatabase::class)->integrity());
         $this->artisan('migrate', ['--force' => true])->assertSuccessful();
     }
@@ -87,6 +91,7 @@ class TableMigrationsTest extends TestCase
 
     public function test_migrate_does_not_overwrite_untracked_existing_data(): void
     {
+        $fingerprint = app(MySqlSchemaMetadata::class)->fingerprint();
         $manager = User::factory()->manager()->create();
         DB::table('migrations')->delete();
 
@@ -99,11 +104,13 @@ class TableMigrationsTest extends TestCase
 
         $this->assertDatabaseCount('migrations', 0);
         $this->assertSame($manager->name, $manager->fresh()->name);
-        $this->assertSame(LegacyMySqlSchema::FINGERPRINT, app(MySqlSchemaMetadata::class)->fingerprint());
+        $this->assertSame($fingerprint, app(MySqlSchemaMetadata::class)->fingerprint());
     }
 
     public function test_empty_interrupted_foreign_key_and_trigger_migrations_can_resume(): void
     {
+        $fingerprint = app(MySqlSchemaMetadata::class)->fingerprint();
+        $this->removeNotificationExtension();
         DB::table('migrations')->where('migration', '>=', '2026_10_18_000100')->delete();
         DB::statement('ALTER TABLE users DROP FOREIGN KEY users_fk_0');
         DB::unprepared('DROP TRIGGER attachment_source_guard');
@@ -114,7 +121,7 @@ class TableMigrationsTest extends TestCase
         $this->assertDatabaseCount('users', 0);
         $this->assertTrue($this->app->isDownForMaintenance());
         $this->assertTrue(app(MySqlDatabase::class)->integrity());
-        $this->assertSame(LegacyMySqlSchema::FINGERPRINT, app(MySqlSchemaMetadata::class)->fingerprint());
+        $this->assertSame($fingerprint, app(MySqlSchemaMetadata::class)->fingerprint());
     }
 
     public function test_initializer_does_not_resume_an_interrupted_installation_over_business_data(): void
@@ -133,7 +140,18 @@ class TableMigrationsTest extends TestCase
 
     private function recordLegacyHistory(): void
     {
+        $this->removeNotificationExtension();
         DB::table('migrations')->delete();
         DB::table('migrations')->insert(['migration' => LegacyMySqlSchema::MIGRATION, 'batch' => 1]);
+    }
+
+    private function removeNotificationExtension(): void
+    {
+        Schema::dropIfExists('whatsapp_connections');
+        Schema::dropIfExists('whatsapp_webhook_events');
+        Schema::dropIfExists('whatsapp_attempts');
+        Schema::dropIfExists('whatsapp_messages');
+        Schema::table('customers', fn ($table) => $table->dropColumn('whatsapp_enabled'));
+        DB::table('migrations')->where('migration', 'like', '2026_10_22_%')->delete();
     }
 }

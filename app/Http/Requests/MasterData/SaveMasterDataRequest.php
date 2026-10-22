@@ -5,6 +5,7 @@ namespace App\Http\Requests\MasterData;
 use App\Enums\MasterResource;
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Services\WhatsApp\PhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -43,6 +44,17 @@ class SaveMasterDataRequest extends FormRequest
         }
         if ($resource === MasterResource::LoadingWorkers) {
             $rules['joined_on'] = ['nullable', 'date_format:Y-m-d'];
+        }
+        if ($resource === MasterResource::Customers) {
+            $rules['whatsapp_enabled'] = ['sometimes', 'boolean'];
+            $rules['phone'][] = function ($attribute, $value, $fail) {
+                if ($this->boolean('whatsapp_enabled') && PhoneNumber::normalize($value) === null) {
+                    $fail('Isi nomor WhatsApp Indonesia yang valid untuk mengaktifkan notifikasi.');
+                }
+            };
+            if ($this->boolean('whatsapp_enabled')) {
+                $rules['phone'][1] = 'required';
+            }
         }
         if ($resource === MasterResource::Vehicles) {
             $rules['plate_number'][] = 'regex:/^[A-Z0-9-]+$/';

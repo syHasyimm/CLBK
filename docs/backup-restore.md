@@ -20,8 +20,8 @@ Verifikasi memeriksa tanda tangan, checksum, struktur data, hash baris, metrik, 
 
 1. Aktifkan maintenance dengan `php artisan down`, lalu hentikan proses web, scheduler, dan worker yang menulis data.
 2. Jalankan `php artisan clbk:restore D:/Cadangan/FILE.zip --force`. Data saat ini dicadangkan terlebih dahulu sebagai safety backup.
-3. Restore mengganti data dalam transaksi, memeriksa foreign key dan rekonsiliasi sebelum commit, lalu memasang kembali trigger. Trigger juga dipasang kembali ketika transaksi gagal. Sesi, reset token, remember token, dan cache lama dicabut; audit restore ditambahkan.
-4. Maintenance tetap aktif. Periksa `clbk:database-ready`, `clbk:doctor`, saldo, dokumen, bukti, dan akses akun sebelum menjalankan `php artisan up`.
+3. Restore mengganti data dalam transaksi, memeriksa foreign key dan rekonsiliasi sebelum commit, lalu memasang kembali trigger. Trigger juga dipasang kembali ketika transaksi gagal. Sesi, reset token, remember token, dan cache lama dicabut; audit restore ditambahkan. Pengiriman WhatsApp dinonaktifkan, antrean WA yang dipulihkan dibersihkan, dan pesan belum pasti/belum terkirim dikarantina agar tidak terkirim ulang dari backup.
+4. Maintenance tetap aktif. Periksa `clbk:database-ready`, `clbk:doctor`, saldo, dokumen, bukti, dan akses akun sebelum menjalankan `php artisan up`. Rekonsiliasi riwayat WhatsApp dengan Fonnte sebelum mengaktifkan kembali notifikasi dan worker. Pesan karantina tidak dikirim otomatis; lihat [panduan WhatsApp](whatsapp-fonnte.md).
 
 DDL trigger MySQL tidak transaksional. Jika proses terputus, pertahankan maintenance dan perbaiki kelengkapan trigger sebelum membuka aplikasi.
 

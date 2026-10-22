@@ -6,6 +6,7 @@ import {
     Factory,
     History,
     LayoutDashboard,
+    MessageCircle,
     ReceiptText,
     Scale,
     Settings,
@@ -35,11 +36,19 @@ const masterNavigation = [
 ];
 const accountNavigation = [
     { name: 'users.index', pattern: 'users.*', label: 'Akun Pengguna', icon: ShieldCheck },
+];
+const settingsNavigation = [
     {
         name: 'settings.business.edit',
         pattern: 'settings.business.*',
         label: 'Pengaturan Usaha',
         icon: Settings,
+    },
+    {
+        name: 'whatsapp.index',
+        pattern: 'whatsapp.*',
+        label: 'Notifikasi WhatsApp',
+        icon: MessageCircle,
     },
 ];
 const mainNavigation = [
@@ -108,6 +117,7 @@ export function navigationForRole(role: User['role']): NavigationItem[] {
                 ['dashboard', 'prices.index', 'reports.index', 'profile.edit'].includes(item.name),
             ),
             ...financeNavigation,
+            ...settingsNavigation.filter((item) => item.name === 'whatsapp.index'),
         ];
     }
     if (role === 'driver') {
@@ -140,6 +150,7 @@ export function navigationForRole(role: User['role']): NavigationItem[] {
             icon,
         })),
         ...accountNavigation,
+        ...settingsNavigation,
     ];
 }
 
@@ -193,6 +204,12 @@ export function navigationGroupsForRole(role: User['role'], items: NavigationIte
                   },
               ]
             : []),
+        {
+            label: 'Pengaturan',
+            items: items.filter((item) =>
+                settingsNavigation.some((entry) => entry.name === item.name),
+            ),
+        },
         account,
     ];
     return groups;

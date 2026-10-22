@@ -29,7 +29,7 @@ Jika binary log MySQL aktif, administrator perlu mengaktifkan `log_bin_trust_fun
 
 ## Akun lokal
 
-Untuk menjalankan seluruh aplikasi dalam container lokal beserta MySQL dan inbox email uji, ikuti [panduan Docker lokal](docs/docker-local.md). Script `scripts/start-local-docker.ps1` menyiapkan container dan data demo secara terpisah dari `.env` development.
+Untuk menjalankan seluruh aplikasi dalam container lokal beserta MySQL, ikuti [panduan Docker lokal](docs/docker-local.md). Script `scripts/start-local-docker.ps1` menyiapkan container dan data demo secara terpisah dari `.env` development. Email dinonaktifkan pada profil Docker lokal.
 
 Untuk membuat akun manajer sendiri pada database yang belum memiliki pengguna, jalankan sebelum seeder akun contoh:
 
@@ -62,6 +62,8 @@ Seeder akun contoh hanya diizinkan pada lingkungan `local` atau `testing`.
 Seluruh penulisan usaha memakai `WriteTransaction`, yang mengambil row lock pada `database_write_locks` sebelum membaca saldo. Konflik MySQL 1205/1213 dicoba ulang; efek eksternal ditempatkan setelah commit. Laporan memakai snapshot `REPEATABLE READ`.
 
 ## Pengujian
+
+Notifikasi WhatsApp hasil timbangan dan pembayaran tersedia melalui Fonnte. Manajer dapat memasukkan token terenkripsi dan menguji koneksi melalui Pengaturan → Notifikasi WhatsApp. Ikuti [panduan aktivasi dan antrean WhatsApp](docs/whatsapp-fonnte.md). Pengiriman nonaktif secara bawaan dan memerlukan aktivasi per konsumen.
 
 Gunakan database khusus **`clbk_mysql_test`**, terpisah dari `clbk`, dengan pengguna `clbk_test` yang hanya memiliki hak pada database pengujian. Salin `.env.testing.example` menjadi `.env.testing`, lalu isi kredensialnya. Bootstrap menolak database dengan nama lain atau host nonlokal karena pengujian menghapus tabel.
 

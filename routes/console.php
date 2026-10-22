@@ -11,6 +11,8 @@ Schedule::command('clbk:backup --scheduled')
     ->dailyAt(config('backups.time', '23:00'))->timezone('Asia/Jakarta')
     ->withoutOverlapping(180)->appendOutputTo(storage_path('logs/backup-scheduler.log'));
 
+Schedule::command('whatsapp:dispatch')->everyMinute()->withoutOverlapping(5);
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

@@ -5,6 +5,7 @@ namespace App\Actions\Finance;
 use App\Actions\Sales\SaveSale;
 use App\Enums\FinanceKind;
 use App\Models\Customer;
+use App\Models\CustomerPayment;
 use App\Models\ExpenseCategory;
 use App\Models\FinanceDocument;
 use App\Models\LoadingWorker;
@@ -15,6 +16,7 @@ use App\Services\AuditService;
 use App\Services\BusinessCash;
 use App\Services\CashLedger;
 use App\Services\IdempotencyService;
+use App\Services\WhatsApp\NotificationOutbox;
 use App\Support\BusinessClock;
 use App\Support\Database\WriteTransaction;
 use App\Support\DocumentNumber;
@@ -136,6 +138,10 @@ class PostFinance
                         'business_date' => $attributes['business_date'], 'trip_id' => $document->trip_id, 'daily_expense_id' => $document->id, 'created_by' => $actor->id]);
                 }
                 app(AuditService::class)->record($actor, 'post-finance', $document, null, app(AuditService::class)->snapshot($document) + ['allocations' => $allocations]);
+
+                if ($document instanceof CustomerPayment) {
+                    app(NotificationOutbox::class)->payment($document);
+                }
 
                 return $document->id;
             });

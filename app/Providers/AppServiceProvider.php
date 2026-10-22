@@ -67,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
         );
         RateLimiter::for('proof-uploads', fn (Request $request) => Limit::perMinute(10)->by('proof-uploads:'.$request->user()->getAuthIdentifier())
         );
+        RateLimiter::for('whatsapp-connection', fn (Request $request) => Limit::perMinute(5)->by('whatsapp-connection:'.$request->user()->getAuthIdentifier()));
 
         Gate::policy(User::class, ManagerPolicy::class);
         Gate::policy(Trip::class, TripPolicy::class);
@@ -83,6 +84,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(CashAccount::class, CashAccountPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::define('manage-settings', fn (User $user) => (new ManagerPolicy)->viewAny($user));
+        Gate::define('view-whatsapp', fn (User $user) => $user->is_active && in_array($user->role, [UserRole::Manager, UserRole::Cashier], true));
         Gate::define('manage-prices', fn (User $user) => $user->is_active && in_array($user->role, [UserRole::Manager, UserRole::Cashier], true));
         Gate::define('view-prices', fn (User $user) => $user->is_active && in_array($user->role, [UserRole::Manager, UserRole::Cashier], true));
         Vite::prefetch(concurrency: 3);

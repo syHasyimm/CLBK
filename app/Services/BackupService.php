@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\WhatsApp\NotificationOutbox;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
@@ -179,6 +180,7 @@ final class BackupService
                         DB::table($table)->delete();
                     }
                     DB::table('users')->update(['remember_token' => null]);
+                    app(NotificationOutbox::class)->pauseAfterRestore();
                 });
                 DB::table('audit_logs')->insert(['actor_id' => null, 'action' => 'backup-restored', 'entity_type' => 'backups',
                     'entity_id' => $manifest['id'], 'before_json' => null,

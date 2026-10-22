@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Weighing;
 use App\Services\AuditService;
 use App\Services\IdempotencyService;
+use App\Services\WhatsApp\NotificationOutbox;
 use App\Support\BusinessClock;
 use App\Support\Database\WriteTransaction;
 use Carbon\CarbonImmutable;
@@ -67,6 +68,8 @@ class PostWeighing
                     $record->load('items', 'loaders');
                     $audit->record($actor, 'post', $record, $before, $audit->snapshot($record)
                         + ['items' => $record->items->toArray(), 'loaders' => $record->loaders->toArray()]);
+
+                    app(NotificationOutbox::class)->weighing($record);
 
                     return $record->id;
                 });
