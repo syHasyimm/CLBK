@@ -30,7 +30,7 @@ export default function ConfirmDialog({
             <AlertDialogContent>
                 <AlertDialogTitle>{title}</AlertDialogTitle>
                 <AlertDialogDescription>{description}</AlertDialogDescription>
-                <div className="flex justify-end gap-3">
+                <div className="confirmation-actions flex flex-col-reverse justify-end gap-3 sm:flex-row">
                     <AlertDialogCancel>Batal</AlertDialogCancel>
                     <AlertDialogAction
                         className={

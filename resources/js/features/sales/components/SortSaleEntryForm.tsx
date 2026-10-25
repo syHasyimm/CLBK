@@ -7,12 +7,23 @@ import { operationError } from '@/lib/form';
 import { Link } from '@inertiajs/react';
 import SaleFormField from './SaleFormField';
 import SaleVehiclePicker from './SaleVehiclePicker';
+import { useState } from 'react';
+import TransactionReview from '@/components/common/TransactionReview';
+import { rupiah } from '@/lib/currency';
+import { weight } from '@/lib/weight';
 
 export default function SortSaleEntryForm({ model }: { model: SaleFormModel }) {
     const { kind, replacement, form, summary, ready, submit } = model;
+    const [reviewOpen, setReviewOpen] = useState(false);
 
     return (
-        <form onSubmit={submit} className="grid items-start gap-6 lg:grid-cols-3">
+        <form
+            onSubmit={(event) => {
+                event.preventDefault();
+                if (ready) setReviewOpen(true);
+            }}
+            className="grid items-start gap-6 lg:grid-cols-3"
+        >
             <UnsavedChangesGuard dirty={form.isDirty && !form.processing} />
             <div className="rounded-xl border bg-card p-6 sm:p-8 lg:col-span-2">
                 {replacement && (
@@ -115,9 +126,11 @@ export default function SortSaleEntryForm({ model }: { model: SaleFormModel }) {
                     Perbarui ringkasan
                 </Button>
             </div>
-            <div className="flex flex-wrap items-center gap-3 lg:col-span-3">
-                <Button disabled={!ready}>Simpan Penjualan Sortir</Button>
-                <Button asChild variant="outline">
+            <div className="mobile-action-dock flex flex-wrap items-center gap-3 lg:col-span-3">
+                <Button className="w-full lg:w-auto" disabled={!ready}>
+                    {form.processing ? 'Menyimpan...' : 'Periksa penjualan sortir'}
+                </Button>
+                <Button asChild variant="outline" className="mobile-secondary-action">
                     <Link href={route(kind + '-sales.index')}>Kembali</Link>
                 </Button>
                 <InputError
@@ -128,6 +141,37 @@ export default function SortSaleEntryForm({ model }: { model: SaleFormModel }) {
                     }
                 />
             </div>
+            <TransactionReview
+                open={reviewOpen}
+                onOpenChange={setReviewOpen}
+                title="Periksa penjualan sortir"
+                description="Periksa berat, harga jual, dan pembeli. Penerimaan uang dicatat terpisah oleh kasir atau manajer."
+                rows={[
+                    { label: 'Mobil', value: model.vehicle?.label ?? 'Belum dipilih' },
+                    { label: 'Pembeli', value: form.data.buyer_name || 'Tidak diisi' },
+                    {
+                        label: 'Berat sortir',
+                        value: summary.data?.preview
+                            ? weight(summary.data.preview.grams)
+                            : 'Belum dihitung',
+                    },
+                    {
+                        label: 'Harga per kg',
+                        value: summary.data
+                            ? rupiah(summary.data.price.price_idr)
+                            : 'Belum tersedia',
+                    },
+                    {
+                        label: 'Nilai penjualan',
+                        value: summary.data?.preview
+                            ? rupiah(summary.data.preview.revenue_idr)
+                            : 'Belum dihitung',
+                    },
+                ]}
+                confirmLabel="Simpan penjualan sortir"
+                onConfirm={() => submit()}
+                disabled={!ready}
+            />
         </form>
     );
 }

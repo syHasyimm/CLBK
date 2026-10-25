@@ -133,11 +133,11 @@ export default function UserForm({ record, roles, vehicles }: UserFormProps) {
                     />
                 </div>
             </div>
-            <div className="mt-8 flex justify-end gap-3 border-t pt-6">
-                <Button variant="outline" asChild>
+            <div className="mobile-action-dock mt-8 flex justify-end gap-3 border-t pt-6">
+                <Button variant="outline" asChild className="mobile-secondary-action">
                     <Link href={route('users.index')}>Batal</Link>
                 </Button>
-                <Button disabled={form.processing}>
+                <Button className="w-full lg:w-auto" disabled={form.processing}>
                     {form.processing ? 'Menyimpan...' : 'Simpan akun'}
                 </Button>
             </div>

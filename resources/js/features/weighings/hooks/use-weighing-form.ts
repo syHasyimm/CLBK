@@ -45,8 +45,8 @@ export default function useWeighingForm({
             selected.map((worker) => worker.id),
         );
     }
-    function submit(e: FormEvent) {
-        e.preventDefault();
+    function submit(e?: FormEvent) {
+        e?.preventDefault();
         if (
             !summary.ready ||
             !summary.preview ||

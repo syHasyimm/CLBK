@@ -7,6 +7,7 @@ import PayrollWorklist from '@/features/finance/components/PayrollWorklist';
 import { Button } from '@/components/ui/button';
 import type { FinanceKind, PayeeCard, PaginatedData } from '@/types/finance';
 import { financeLabels, worklistRoute } from '@/types/finance';
+import { rupiah } from '@/lib/currency';
 export default function Worklist({
     kind,
     cards,
@@ -36,13 +37,26 @@ export default function Worklist({
             }
         >
             <Head title={financeLabels[kind]} />
+            <section
+                className="mobile-worklist-summary lg:hidden"
+                aria-label="Sisa hak konsumen pada halaman ini"
+            >
+                <p>Sisa utang konsumen</p>
+                <strong>
+                    {rupiah(cards.data.reduce((total, card) => total + card.remaining_idr, 0))}
+                </strong>
+                <p>
+                    Halaman ini · {cards.data.length} dari {cards.total} konsumen · sesuai filter
+                </p>
+            </section>
             <OperationalFilters
                 url={route(worklistRoute(kind))}
                 filters={filters}
                 statuses={[]}
                 dates
             />
-            <div className="grid items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
+            <h2 className="mb-3 text-base font-semibold lg:hidden">Daftar konsumen</h2>
+            <div className="mobile-payee-list grid items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
                 {cards.data.map((card) => (
                     <PayeeSummaryCard key={card.id} kind={kind} card={card} filters={filters} />
                 ))}

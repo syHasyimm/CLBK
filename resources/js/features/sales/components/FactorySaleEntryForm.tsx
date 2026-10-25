@@ -21,14 +21,21 @@ import {
 } from 'lucide-react';
 import SaleFormField from './SaleFormField';
 import SaleVehiclePicker from './SaleVehiclePicker';
+import { useState } from 'react';
+import TransactionReview from '@/components/common/TransactionReview';
+import { weight } from '@/lib/weight';
 
 export default function FactorySaleEntryForm({ model }: { model: SaleFormModel }) {
     const { replacement, vehicleAssignment, factory, setFactory, form, summary, ready, submit } =
         model;
+    const [reviewOpen, setReviewOpen] = useState(false);
 
     return (
         <form
-            onSubmit={submit}
+            onSubmit={(event) => {
+                event.preventDefault();
+                if (ready) setReviewOpen(true);
+            }}
             aria-label="Catat penjualan pabrik"
             aria-busy={form.processing}
             className="factory-sales grid items-start gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"
@@ -263,22 +270,26 @@ export default function FactorySaleEntryForm({ model }: { model: SaleFormModel }
                         }
                     />
                 </div>
-                <Button
-                    type="submit"
-                    size="lg"
-                    className="h-12 w-full rounded-xl"
-                    disabled={!ready}
-                >
-                    {form.processing ? (
-                        <LoaderCircle
-                            className="size-4 animate-spin motion-reduce:animate-none"
-                            aria-hidden="true"
-                        />
-                    ) : (
-                        <Check className="size-4" aria-hidden="true" />
-                    )}
-                    {form.processing ? 'Menyimpan...' : 'Simpan Penjualan'}
-                </Button>
+                <div className="mobile-action-dock">
+                    <div>
+                        <Button
+                            type="submit"
+                            size="lg"
+                            className="h-12 w-full rounded-xl"
+                            disabled={!ready}
+                        >
+                            {form.processing ? (
+                                <LoaderCircle
+                                    className="size-4 animate-spin motion-reduce:animate-none"
+                                    aria-hidden="true"
+                                />
+                            ) : (
+                                <Check className="size-4" aria-hidden="true" />
+                            )}
+                            {form.processing ? 'Menyimpan...' : 'Periksa penjualan'}
+                        </Button>
+                    </div>
+                </div>
                 <InputError
                     message={
                         operationError(form.errors) ||
@@ -297,6 +308,44 @@ export default function FactorySaleEntryForm({ model }: { model: SaleFormModel }
                     Kembali ke daftar penjualan
                 </Link>
             </aside>
+            <TransactionReview
+                open={reviewOpen}
+                onOpenChange={setReviewOpen}
+                title="Periksa penjualan pabrik"
+                description="Nota mencatat penjualan dan piutang. Uang yang diterima dicatat terpisah oleh kasir atau manajer."
+                rows={[
+                    { label: 'Mobil', value: model.vehicle?.label ?? 'Belum dipilih' },
+                    { label: 'Pabrik', value: factory?.label ?? 'Belum dipilih' },
+                    {
+                        label: 'Berat diterima',
+                        value: summary.data?.preview
+                            ? weight(summary.data.preview.grams)
+                            : 'Belum dihitung',
+                    },
+                    {
+                        label: 'Harga per kg',
+                        value: summary.data
+                            ? rupiah(summary.data.price.price_idr)
+                            : 'Belum tersedia',
+                    },
+                    { label: 'Nomor nota', value: form.data.invoice_number || 'Tidak diisi' },
+                    {
+                        label: 'Potongan',
+                        value: summary.data?.preview
+                            ? rupiah(summary.data.preview.deduction_idr)
+                            : 'Belum dihitung',
+                    },
+                    {
+                        label: 'Nilai bersih nota',
+                        value: summary.data?.preview
+                            ? rupiah(summary.data.preview.revenue_idr)
+                            : 'Belum dihitung',
+                    },
+                ]}
+                confirmLabel="Simpan penjualan"
+                onConfirm={() => submit()}
+                disabled={!ready}
+            />
         </form>
     );
 }

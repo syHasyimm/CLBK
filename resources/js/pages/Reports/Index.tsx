@@ -40,7 +40,7 @@ export default function Reports(
         <AppLayout>
             <Head title={'Laporan · ' + title} />
             <div className="reports-workspace space-y-6 sm:space-y-8">
-                <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end print:hidden">
+                <div className="hidden flex-col justify-between gap-5 lg:flex lg:flex-row lg:items-end print:hidden">
                     <div className="min-w-0">
                         <p className="mb-3 flex items-center gap-2 text-xs font-medium text-primary">
                             <ChartNoAxesCombined className="size-4" aria-hidden="true" />
@@ -73,6 +73,44 @@ export default function Reports(
                         </Button>
                     </div>
                 </div>
+                <div className="mobile-report-toolbar lg:hidden print:hidden">
+                    <details className="mobile-report-actions">
+                        <summary>
+                            <Download aria-hidden="true" /> Ekspor & cetak
+                        </summary>
+                        <div>
+                            <a href={route('reports.export', filters)}>
+                                <Download aria-hidden="true" /> Ekspor CSV
+                            </a>
+                            <a
+                                href={route('reports.print', filters)}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <Printer aria-hidden="true" /> Cetak / PDF
+                            </a>
+                        </div>
+                    </details>
+                </div>
+                <nav
+                    className="mobile-report-tabs lg:hidden print:hidden"
+                    aria-label="Jenis laporan"
+                >
+                    {Object.entries(props.views).map(([view, label]) => (
+                        <Link
+                            key={view}
+                            href={route('reports.index', {
+                                view,
+                                from: filters.from,
+                                to: filters.to,
+                                vehicle_id: filters.vehicle_id,
+                            })}
+                            aria-current={filters.view === view ? 'page' : undefined}
+                        >
+                            {label}
+                        </Link>
+                    ))}
+                </nav>
                 <ReportFilters {...props} />
                 <section
                     className="flex flex-col justify-between gap-3 border-b border-primary/10 pb-5 sm:flex-row sm:items-start"

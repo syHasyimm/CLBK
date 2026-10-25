@@ -1,19 +1,25 @@
 import { PropsWithChildren, ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
-import { Grid2X2, LogOut } from 'lucide-react';
+import { ArrowLeft, Grid2X2, LogOut } from 'lucide-react';
 import { Dialog } from 'radix-ui';
 import ApplicationLogo from '@/components/ApplicationLogo';
 import ConnectionStatus from '@/components/common/ConnectionStatus';
 import WorkspaceMenu from '@/components/common/WorkspaceMenu';
 import StaffSidebar from '@/components/common/StaffSidebar';
 import { Button } from '@/components/ui/button';
-import { navigationForRole, navigationIsActive, type NavigationItem } from '@/lib/navigation';
+import {
+    navigationForRole,
+    navigationHref,
+    navigationIsActive,
+    type NavigationItem,
+} from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 import { roleLabels } from '@/types/master-data';
 import PwaUpdateNotice from '@/components/pwa/PwaUpdateNotice';
+import useMobileKeyboard from '@/hooks/use-mobile-keyboard';
 
 const shortLabels: Record<string, string> = {
-    dashboard: 'Dashboard',
+    dashboard: 'Beranda',
     'customer-payments.index': 'Penimbang',
     'payroll.index': 'Gaji Muat',
     'cash.index': 'Kas',
@@ -42,7 +48,31 @@ export default function StaffLayout({
     );
     const [menuOpen, setMenuOpen] = useState(false);
     const desktopHeading = useRef<HTMLParagraphElement>(null);
+    const mobileMenuTrigger = useRef<HTMLButtonElement>(null);
     const activeItem = items.find(navigationIsActive);
+    const current = String(route().current() ?? '');
+    const home = current === 'dashboard';
+    const focused =
+        /\.(create|edit|payee)$/.test(current) &&
+        current !== 'profile.edit' &&
+        current !== 'settings.business.edit';
+    const keyboardOpen = useMobileKeyboard();
+    const mobileTitles: Record<string, string> = {
+        'weighings.create': 'Catat timbangan',
+        'factory-sales.create': 'Penjualan pabrik',
+        'sort-sales.create': 'Penjualan sortir',
+        'customers.create': 'Tambah konsumen',
+        'customer-payments.payee': 'Pelunasan konsumen',
+        'payroll.payee': 'Periksa & bayar upah',
+        'sale-receipts.create': 'Catat penerimaan',
+        'daily-expenses.create': 'Catat uang keluar',
+    };
+    const backHref =
+        current === 'customers.create'
+            ? route('weighings.create')
+            : activeItem && current !== activeItem.name
+              ? navigationHref(activeItem)
+              : route('dashboard');
     useEffect(() => {
         const viewport = window.matchMedia(desktopMedia);
         const closeMenuOnDesktop = () => {
@@ -53,151 +83,227 @@ export default function StaffLayout({
         return () => viewport.removeEventListener('change', closeMenuOnDesktop);
     }, []);
 
+    useEffect(() => {
+        if (!Object.keys(errors).length) return;
+        const frame = requestAnimationFrame(() => {
+            const field = Array.from(
+                document.querySelectorAll<HTMLElement>('[aria-invalid="true"]:not([disabled])'),
+            ).find((element) => element.getClientRects().length > 0);
+            if (field) {
+                field.focus({ preventScroll: true });
+                field.scrollIntoView({ block: 'center', behavior: 'instant' });
+            }
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [errors]);
+
     return (
-        <div className="staff-layout min-h-svh">
-            <a
-                href="#main-content"
-                className="staff-skip-link sr-only z-50 rounded-lg bg-card p-3 text-primary focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        <Dialog.Root open={menuOpen} onOpenChange={setMenuOpen}>
+            <div
+                className="staff-layout min-h-svh"
+                data-role={user.role}
+                data-mobile-view={home ? 'home' : focused ? 'form' : 'page'}
+                data-keyboard-open={keyboardOpen}
             >
-                Lewati ke isi halaman
-            </a>
-            <StaffSidebar items={items} user={user} businessName={business.name} />
-            <div className="min-w-0 lg:pl-64 print:pl-0">
-                <ConnectionStatus />
-                <PwaUpdateNotice />
-                <header className="staff-header border-b border-primary/10 bg-card">
-                    <div className="mx-auto flex min-h-20 max-w-7xl items-center gap-2.5 px-4 py-4 sm:gap-4 sm:px-8 lg:py-3">
-                        <Link
-                            href={route('dashboard')}
-                            aria-label={business.name + ' · Dashboard'}
-                            className="flex min-w-0 flex-1 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring lg:hidden"
-                        >
-                            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-primary/10 bg-secondary">
-                                <ApplicationLogo className="size-7 text-primary" />
-                            </span>
-                            <span className="min-w-0">
-                                <span
-                                    className="block truncate text-[15px] font-semibold tracking-tight sm:text-base"
-                                    title={business.name}
-                                >
-                                    {business.name}
-                                </span>
-                                <span className="mt-1 block truncate text-[10px] text-muted-foreground sm:text-[11px]">
-                                    Pengelolaan usaha sawit
-                                </span>
-                            </span>
-                        </Link>
-                        <div className="hidden min-w-0 flex-1 lg:block">
-                            <p className="text-[11px] text-muted-foreground">
-                                Ruang kerja {roleLabels[user.role].toLowerCase()}
-                            </p>
-                            <p
-                                ref={desktopHeading}
-                                tabIndex={-1}
-                                className="mt-1 truncate text-sm font-semibold outline-none"
-                            >
-                                {activeItem?.label ?? 'Rincian transaksi'}
-                            </p>
-                        </div>
-                        <span className="shrink-0 rounded-full border border-primary/10 bg-secondary/60 px-2.5 py-1.5 text-[10px] font-semibold text-primary sm:px-3 sm:text-[11px]">
-                            {roleLabels[user.role]}
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            asChild
-                            className="size-11 shrink-0 rounded-xl border border-primary/10 bg-muted/40 text-primary hover:bg-secondary lg:w-auto lg:gap-2 lg:px-3"
-                        >
-                            <Link
-                                href={route('logout')}
-                                method="post"
-                                as="button"
-                                aria-label="Keluar dari akun"
-                                title="Keluar dari akun"
-                            >
-                                <LogOut className="size-4" aria-hidden="true" />
-                                <span className="hidden text-xs lg:inline">Keluar</span>
-                            </Link>
-                        </Button>
-                    </div>
-                </header>
-                <main
-                    id="main-content"
-                    tabIndex={-1}
-                    className="staff-main mx-auto min-w-0 max-w-7xl px-4 pt-6 sm:px-8 sm:pt-9"
+                <a
+                    href="#main-content"
+                    className="staff-skip-link sr-only z-50 rounded-lg bg-card p-3 text-primary focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
                 >
-                    {header && (
-                        <div className="staff-page-heading mb-6 min-w-0 sm:mb-8">{header}</div>
-                    )}
-                    {flash.success && (
-                        <div
-                            role="status"
-                            className="mb-6 rounded-xl border border-primary/20 bg-secondary px-4 py-3 text-sm text-primary"
-                        >
-                            {flash.success}
-                        </div>
-                    )}
-                    {errors.operation && (
-                        <div
-                            role="alert"
-                            className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-                        >
-                            {errors.operation}
-                        </div>
-                    )}
-                    {children}
-                </main>
-            </div>
-            <Dialog.Root open={menuOpen} onOpenChange={setMenuOpen}>
-                <nav
-                    aria-label="Navigasi bawah"
-                    className="staff-bottom-nav fixed inset-x-0 bottom-0 z-30 mx-auto border-t border-primary/10 bg-card/95 px-2 pt-2 backdrop-blur-lg md:bottom-4 md:max-w-xl md:rounded-2xl md:border md:px-3 lg:hidden print:hidden"
-                >
-                    <div className="grid grid-cols-5 gap-1">
-                        {primary.slice(0, 2).map((item) => (
-                            <BottomLink key={item.name} item={item} />
-                        ))}
-                        {hasMenu && (
-                            <Dialog.Trigger asChild>
-                                <button
-                                    type="button"
-                                    className={cn(
-                                        'cashier-menu-trigger',
-                                        (moreActive || menuOpen) && 'cashier-menu-trigger-active',
-                                    )}
+                    Lewati ke isi halaman
+                </a>
+                <StaffSidebar items={items} user={user} businessName={business.name} />
+                <div className="min-w-0 lg:pl-64 print:pl-0">
+                    <ConnectionStatus />
+                    <PwaUpdateNotice />
+                    <header className="mobile-app-header lg:hidden print:hidden">
+                        {home ? (
+                            <div className="mobile-brand-header">
+                                <Link
+                                    href={route('dashboard')}
+                                    className="mobile-brand"
+                                    aria-label={business.name + ' · Beranda'}
                                 >
-                                    <span className="cashier-menu-trigger-icon">
-                                        <Grid2X2 className="size-[1.375rem]" aria-hidden="true" />
-                                    </span>
-                                    <span>Menu</span>
-                                    {moreActive && (
-                                        <span className="sr-only">
-                                            Halaman saat ini ada di menu lainnya
-                                        </span>
-                                    )}
-                                </button>
-                            </Dialog.Trigger>
+                                    <ApplicationLogo className="size-8" />
+                                    <span>{business.name}</span>
+                                </Link>
+                                <span className="mobile-role">{roleLabels[user.role]}</span>
+                            </div>
+                        ) : (
+                            <div className="mobile-page-bar">
+                                <Link
+                                    href={backHref}
+                                    className="mobile-back"
+                                    aria-label={'Kembali ke ' + (activeItem?.label ?? 'Beranda')}
+                                >
+                                    <ArrowLeft aria-hidden="true" />
+                                </Link>
+                                <h1>
+                                    {mobileTitles[current] ??
+                                        activeItem?.label ??
+                                        'Rincian transaksi'}
+                                </h1>
+                                {focused && (
+                                    <>
+                                        <Dialog.Trigger asChild>
+                                            <Button
+                                                ref={mobileMenuTrigger}
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label="Buka semua menu"
+                                                className="mobile-header-menu"
+                                            >
+                                                <Grid2X2 aria-hidden="true" />
+                                            </Button>
+                                        </Dialog.Trigger>
+                                    </>
+                                )}
+                            </div>
                         )}
-                        {primary.slice(2).map((item) => (
-                            <BottomLink key={item.name} item={item} />
-                        ))}
-                    </div>
-                </nav>
-                {hasMenu && (
-                    <WorkspaceMenu
-                        items={items}
-                        role={user.role}
-                        onNavigate={() => setMenuOpen(false)}
-                        onCloseAutoFocus={(event) => {
-                            if (window.matchMedia(desktopMedia).matches) {
-                                event.preventDefault();
-                                desktopHeading.current?.focus();
-                            }
-                        }}
-                    />
-                )}
-            </Dialog.Root>
-        </div>
+                    </header>
+                    <header className="staff-header hidden border-b border-primary/10 bg-card lg:block">
+                        <div className="mx-auto flex min-h-20 max-w-7xl items-center gap-2.5 px-4 py-4 sm:gap-4 sm:px-8 lg:py-3">
+                            <Link
+                                href={route('dashboard')}
+                                aria-label={business.name + ' · Dashboard'}
+                                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring lg:hidden"
+                            >
+                                <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-primary/10 bg-secondary">
+                                    <ApplicationLogo className="size-7 text-primary" />
+                                </span>
+                                <span className="min-w-0">
+                                    <span
+                                        className="block truncate text-[15px] font-semibold tracking-tight sm:text-base"
+                                        title={business.name}
+                                    >
+                                        {business.name}
+                                    </span>
+                                    <span className="mt-1 block truncate text-[10px] text-muted-foreground sm:text-[11px]">
+                                        Pengelolaan usaha sawit
+                                    </span>
+                                </span>
+                            </Link>
+                            <div className="hidden min-w-0 flex-1 lg:block">
+                                <p className="text-[11px] text-muted-foreground">
+                                    Ruang kerja {roleLabels[user.role].toLowerCase()}
+                                </p>
+                                <p
+                                    ref={desktopHeading}
+                                    tabIndex={-1}
+                                    className="mt-1 truncate text-sm font-semibold outline-none"
+                                >
+                                    {activeItem?.label ?? 'Rincian transaksi'}
+                                </p>
+                            </div>
+                            <span className="shrink-0 rounded-full border border-primary/10 bg-secondary/60 px-2.5 py-1.5 text-[10px] font-semibold text-primary sm:px-3 sm:text-[11px]">
+                                {roleLabels[user.role]}
+                            </span>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                asChild
+                                className="size-11 shrink-0 rounded-xl border border-primary/10 bg-muted/40 text-primary hover:bg-secondary lg:w-auto lg:gap-2 lg:px-3"
+                            >
+                                <Link
+                                    href={route('logout')}
+                                    method="post"
+                                    as="button"
+                                    aria-label="Keluar dari akun"
+                                    title="Keluar dari akun"
+                                >
+                                    <LogOut className="size-4" aria-hidden="true" />
+                                    <span className="hidden text-xs lg:inline">Keluar</span>
+                                </Link>
+                            </Button>
+                        </div>
+                    </header>
+                    <main
+                        id="main-content"
+                        tabIndex={-1}
+                        className="staff-main mx-auto min-w-0 max-w-7xl px-4 pt-6 sm:px-8 sm:pt-9"
+                    >
+                        {header && (
+                            <div className="staff-page-heading mb-6 min-w-0 sm:mb-8">{header}</div>
+                        )}
+                        {flash.success && (
+                            <div
+                                role="status"
+                                className="mb-6 rounded-xl border border-primary/20 bg-secondary px-4 py-3 text-sm text-primary"
+                            >
+                                {flash.success}
+                            </div>
+                        )}
+                        {errors.operation && (
+                            <div
+                                role="alert"
+                                className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                            >
+                                {errors.operation}
+                            </div>
+                        )}
+                        {children}
+                    </main>
+                </div>
+                <>
+                    {!focused && (
+                        <nav
+                            aria-label="Navigasi bawah"
+                            className={cn(
+                                'staff-bottom-nav fixed inset-x-0 bottom-0 z-30 mx-auto border-t border-primary/10 bg-card px-2 pt-2 lg:hidden print:hidden',
+                                focused && 'mobile-nav-suppressed',
+                            )}
+                        >
+                            <div className="grid grid-cols-5 gap-1">
+                                {primary.slice(0, 2).map((item) => (
+                                    <BottomLink key={item.name} item={item} />
+                                ))}
+                                {hasMenu && (
+                                    <Dialog.Trigger asChild>
+                                        <button
+                                            type="button"
+                                            className={cn(
+                                                'cashier-menu-trigger',
+                                                (moreActive || menuOpen) &&
+                                                    'cashier-menu-trigger-active',
+                                            )}
+                                        >
+                                            <span className="cashier-menu-trigger-icon">
+                                                <Grid2X2 className="size-6" aria-hidden="true" />
+                                            </span>
+                                            <span>Menu</span>
+                                            {moreActive && (
+                                                <span className="sr-only">
+                                                    Halaman saat ini ada di menu lainnya
+                                                </span>
+                                            )}
+                                        </button>
+                                    </Dialog.Trigger>
+                                )}
+                                {primary.slice(2).map((item) => (
+                                    <BottomLink key={item.name} item={item} />
+                                ))}
+                            </div>
+                        </nav>
+                    )}
+                    {hasMenu && (
+                        <WorkspaceMenu
+                            items={items}
+                            role={user.role}
+                            onNavigate={() => setMenuOpen(false)}
+                            onCloseAutoFocus={(event) => {
+                                if (window.matchMedia(desktopMedia).matches) {
+                                    event.preventDefault();
+                                    desktopHeading.current?.focus();
+                                } else if (focused) {
+                                    event.preventDefault();
+                                    mobileMenuTrigger.current?.focus();
+                                }
+                            }}
+                        />
+                    )}
+                </>
+            </div>
+        </Dialog.Root>
     );
 }
 

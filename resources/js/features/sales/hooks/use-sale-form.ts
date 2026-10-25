@@ -52,8 +52,8 @@ export default function useSaleForm({
         (!factorySale || !!factory) &&
         summary.ready &&
         !form.processing;
-    function submit(e: FormEvent) {
-        e.preventDefault();
+    function submit(e?: FormEvent) {
+        e?.preventDefault();
         if (!ready) return;
         form.transform((data) => ({
             vehicle_id: data.vehicle_id,

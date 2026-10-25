@@ -18,7 +18,54 @@ export default function RecordsTable({
 }) {
     return (
         <div className="overflow-hidden rounded-xl border bg-card">
-            <div className="overflow-x-auto">
+            <div className="divide-y lg:hidden" aria-label={emptyLabel}>
+                {records.data.map((record) => (
+                    <article key={record.id} className="p-4">
+                        <div className="mb-4 flex items-start justify-between gap-3">
+                            <h2 className="min-w-0 break-words text-base font-semibold">
+                                {formatValue(
+                                    Object.keys(columns)[0],
+                                    record[Object.keys(columns)[0]],
+                                )}
+                            </h2>
+                            <Badge variant={record.is_active ? 'secondary' : 'outline'}>
+                                {record.is_active ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                        </div>
+                        <dl className="space-y-3">
+                            {Object.entries(columns)
+                                .slice(1)
+                                .map(([key, label]) => (
+                                    <div
+                                        key={key}
+                                        className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 text-sm"
+                                    >
+                                        <dt className="text-muted-foreground">{label}</dt>
+                                        <dd className="min-w-0 break-words">
+                                            {formatValue(key, record[key])}
+                                        </dd>
+                                    </div>
+                                ))}
+                        </dl>
+                        <div className="mt-4 flex flex-wrap gap-2 border-t pt-3">
+                            {actions(record)}
+                        </div>
+                    </article>
+                ))}
+                {!records.data.length && (
+                    <div className="px-5 py-10 text-center">
+                        <FolderOpen
+                            className="mx-auto mb-3 size-7 text-primary"
+                            aria-hidden="true"
+                        />
+                        <p className="text-sm font-medium">Belum ada data yang ditampilkan.</p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            Tambahkan data atau sesuaikan pencarian Anda.
+                        </p>
+                    </div>
+                )}
+            </div>
+            <div className="hidden overflow-x-auto lg:block print:block">
                 <table className="w-full text-left text-sm">
                     <caption className="sr-only">{emptyLabel}</caption>
                     <thead className="border-b bg-muted/60 text-xs text-muted-foreground">

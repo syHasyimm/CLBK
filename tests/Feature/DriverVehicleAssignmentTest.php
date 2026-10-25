@@ -73,6 +73,17 @@ class DriverVehicleAssignmentTest extends TestCase
         $this->factoryPrice = FactoryPriceSchedule::create(['factory_id' => $this->factory->id, 'effective_from' => '2026-10-08 17:00:00', 'tbs_sell_price_idr' => 3500, 'published_by' => $this->manager->id]);
     }
 
+    public function test_dashboard_exposes_the_drivers_own_assignment_without_cash_details(): void
+    {
+        $this->assign($this->first);
+
+        $this->actingAs($this->driver->fresh())->get(route('dashboard'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Dashboard/Index')
+                ->where('auth.user.assigned_vehicle_id', $this->first->id)
+                ->where('cash', null)
+                ->missing('auth.user.password'));
+    }
+
     private function assign(?Vehicle $vehicle): User
     {
         return app(SaveUser::class)->handle($this->manager, $this->driver->id, ['assigned_vehicle_id' => $vehicle?->id]);

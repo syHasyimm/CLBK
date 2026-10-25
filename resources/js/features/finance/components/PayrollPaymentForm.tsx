@@ -43,6 +43,7 @@ export default function PayrollPaymentForm({
     const backdated = form.data.occurred_at.slice(0, 10) < localNow.slice(0, 10);
     const ready =
         cash?.is_active === true &&
+        cash.balance_idr >= amount &&
         Number.isSafeInteger(amount) &&
         amount > 0 &&
         amount <= totals.remaining_idr &&
@@ -109,6 +110,7 @@ export default function PayrollPaymentForm({
         >
             <UnsavedChangesGuard dirty={form.isDirty && !form.processing} />
             <div className="border-b bg-secondary/40 p-5 sm:p-6">
+                <p className="mb-3 break-words text-lg font-semibold">{recipient.name}</p>
                 <h2
                     id="payroll-payment-title"
                     className="flex items-center gap-2 text-sm font-semibold text-primary"
@@ -261,24 +263,39 @@ export default function PayrollPaymentForm({
                         form.errors.idempotency_key
                     }
                 />
-                <ConfirmDialog
-                    title="Konfirmasi pembayaran upah"
-                    description={`${recipient.name} · ${rupiah(amount)} · ${cash?.name ?? 'Kas Usaha'}. Waktu ${form.data.occurred_at.replace('T', ' ')} WIB. Dasar pembayaran adalah seluruh sisa upah periode ${period.from} sampai ${period.to}. Nominal dialokasikan dari timbangan tertua. Pastikan uang diserahkan sesuai catatan ini.`}
-                    actionLabel="Ya, catat pembayaran"
-                    onConfirm={submit}
-                >
-                    <Button type="button" className="h-12 w-full rounded-xl" disabled={!ready}>
-                        {form.processing ? (
-                            <LoaderCircle
-                                className="size-4 animate-spin motion-reduce:animate-none"
-                                aria-hidden="true"
-                            />
-                        ) : (
-                            <Check className="size-4" aria-hidden="true" />
-                        )}
-                        {form.processing ? 'Mencatat pembayaran...' : 'Konfirmasi pembayaran'}
-                    </Button>
-                </ConfirmDialog>
+                {cash && Number.isSafeInteger(amount) && amount > cash.balance_idr && (
+                    <p role="alert" className="text-sm text-destructive">
+                        Saldo kas tidak cukup untuk pembayaran ini.
+                    </p>
+                )}
+                <div className="mobile-action-dock">
+                    <div>
+                        <ConfirmDialog
+                            title="Konfirmasi pembayaran upah"
+                            description={`${recipient.name} · ${rupiah(amount)} · ${cash?.name ?? 'Kas Usaha'}. Waktu ${form.data.occurred_at.replace('T', ' ')} WIB. Dasar pembayaran adalah seluruh sisa upah periode ${period.from} sampai ${period.to}. Nominal dialokasikan dari timbangan tertua. Pastikan uang diserahkan sesuai catatan ini.`}
+                            actionLabel="Ya, catat pembayaran"
+                            onConfirm={submit}
+                        >
+                            <Button
+                                type="button"
+                                className="h-12 w-full rounded-xl"
+                                disabled={!ready}
+                            >
+                                {form.processing ? (
+                                    <LoaderCircle
+                                        className="size-4 animate-spin motion-reduce:animate-none"
+                                        aria-hidden="true"
+                                    />
+                                ) : (
+                                    <Check className="size-4" aria-hidden="true" />
+                                )}
+                                {form.processing
+                                    ? 'Mencatat pembayaran...'
+                                    : 'Periksa pembayaran upah'}
+                            </Button>
+                        </ConfirmDialog>
+                    </div>
+                </div>
                 <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
                     Pembayaran mencatat voucher dan uang keluar dari kas usaha.
                 </p>

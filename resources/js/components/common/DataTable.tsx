@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import type { PaginatedData } from '@/types/master-data';
 import { cn } from '@/lib/utils';
@@ -17,12 +17,11 @@ export default function DataTable<T extends { id: number | string }>({
     mobileCards?: boolean;
     showPagination?: boolean;
 }) {
-    const role = usePage().props.auth.user.role;
-    const mobileCards = useMobileCards ?? role !== 'manager';
+    const mobileCards = useMobileCards ?? true;
     return (
         <div className="min-w-0 overflow-hidden rounded-xl border bg-card">
             {mobileCards && (
-                <div className="md:hidden print:hidden">
+                <div className="lg:hidden print:hidden">
                     {records.data.length ? (
                         <ul className="divide-y">
                             {records.data.map((row) => (
@@ -52,7 +51,7 @@ export default function DataTable<T extends { id: number | string }>({
                     )}
                 </div>
             )}
-            <div className={cn('overflow-x-auto', mobileCards && 'hidden md:block print:block')}>
+            <div className={cn('overflow-x-auto', mobileCards && 'hidden lg:block print:block')}>
                 <table className="w-full text-left text-sm">
                     <thead className="border-b bg-muted/60 text-muted-foreground">
                         <tr>

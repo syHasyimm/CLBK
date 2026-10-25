@@ -66,11 +66,11 @@ export default function MasterDataForm({ resource, fields, options, record }: Ma
                 />
                 <InputError message={form.errors.is_active} className="mt-2" />
             </div>
-            <div className="mt-8 flex flex-wrap justify-end gap-3 border-t pt-6">
-                <Button variant="outline" asChild>
+            <div className="mobile-action-dock mt-8 flex flex-wrap justify-end gap-3 border-t pt-6">
+                <Button variant="outline" asChild className="mobile-secondary-action">
                     <Link href={route('master-data.index', resource)}>Batal</Link>
                 </Button>
-                <Button disabled={form.processing}>
+                <Button className="w-full lg:w-auto" disabled={form.processing}>
                     {form.processing ? 'Menyimpan...' : 'Simpan data'}
                 </Button>
             </div>

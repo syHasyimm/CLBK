@@ -289,27 +289,31 @@ export default function FinanceForm({
                         ? `Sisa sesudah transaksi: ${rupiah(remaining - Number(form.data.amount_idr || 0))}`
                         : 'Biaya dibukukan satu kali.'}
                 </p>
-                <ConfirmDialog
-                    title="Konfirmasi transaksi uang"
-                    description={`${recipient?.name ?? sale?.party ?? category?.label ?? financeLabels[kind]} · ${rupiah(Number(form.data.amount_idr))} · ${cash?.name ?? 'Kas Usaha'}. Pastikan ${kind === 'receipt' ? 'penerimaan' : 'penyerahan'} uang sesuai catatan ini.`}
-                    actionLabel="Ya, catat transaksi"
-                    onConfirm={submit}
-                >
-                    <Button
-                        disabled={
-                            !ready ||
-                            form.processing ||
-                            (needsAllocation && Number(form.data.amount_idr) > remaining)
-                        }
-                    >
-                        Konfirmasi{' '}
-                        {kind === 'receipt'
-                            ? 'penerimaan'
-                            : kind === 'expense'
-                              ? 'pengeluaran'
-                              : 'pembayaran'}
-                    </Button>
-                </ConfirmDialog>
+                <div className="mobile-action-dock">
+                    <div>
+                        <ConfirmDialog
+                            title="Konfirmasi transaksi uang"
+                            description={`${recipient?.name ?? sale?.party ?? category?.label ?? financeLabels[kind]} · ${rupiah(Number(form.data.amount_idr))} · ${cash?.name ?? 'Kas Usaha'}. Pastikan ${kind === 'receipt' ? 'penerimaan' : 'penyerahan'} uang sesuai catatan ini.`}
+                            actionLabel="Ya, catat transaksi"
+                            onConfirm={submit}
+                        >
+                            <Button
+                                disabled={
+                                    !ready ||
+                                    form.processing ||
+                                    (needsAllocation && Number(form.data.amount_idr) > remaining)
+                                }
+                            >
+                                Konfirmasi{' '}
+                                {kind === 'receipt'
+                                    ? 'penerimaan'
+                                    : kind === 'expense'
+                                      ? 'pengeluaran'
+                                      : 'pembayaran'}
+                            </Button>
+                        </ConfirmDialog>
+                    </div>
+                </div>
             </div>
         </section>
     );

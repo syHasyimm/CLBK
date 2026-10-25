@@ -36,7 +36,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user()?->only(['id', 'name', 'email', 'email_verified_at', 'role', 'is_active']),
+                'user' => $request->user()?->only(['id', 'name', 'email', 'email_verified_at', 'role', 'is_active', 'assigned_vehicle_id']),
             ],
             'business' => fn () => ['name' => AppSetting::values()['business_name']],
             'cash' => function () use ($request) {

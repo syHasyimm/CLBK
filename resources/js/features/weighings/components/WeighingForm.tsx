@@ -4,6 +4,10 @@ import UnsavedChangesGuard from '@/components/common/UnsavedChangesGuard';
 import InputError from '@/components/InputError';
 import { Button } from '@/components/ui/button';
 import LoadingWagePreview from '@/features/weighings/components/LoadingWagePreview';
+import TransactionReview from '@/components/common/TransactionReview';
+import { useState } from 'react';
+import { rupiah } from '@/lib/currency';
+import { weight } from '@/lib/weight';
 import WeighingSummary from '@/features/weighings/components/WeighingSummary';
 import useWeighingForm from '@/features/weighings/hooks/use-weighing-form';
 import type { DriverVehicleAssignment, ReferenceOption } from '@/types/operations';
@@ -38,9 +42,21 @@ export default function WeighingForm(props: WeighingFormProps) {
         names,
         submit,
     } = model;
+    const [reviewOpen, setReviewOpen] = useState(false);
+    const ready =
+        !form.processing &&
+        summary.ready &&
+        !!summary.preview &&
+        !!form.data.customer_id &&
+        !!form.data.vehicle_id &&
+        !vehicleAssignment?.error &&
+        workers.length > 0;
     return (
         <form
-            onSubmit={submit}
+            onSubmit={(event) => {
+                event.preventDefault();
+                if (ready) setReviewOpen(true);
+            }}
             aria-label="Catat timbangan sawit"
             aria-busy={form.processing}
             className="weighing-form grid items-start gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"
@@ -157,7 +173,40 @@ export default function WeighingForm(props: WeighingFormProps) {
                     />
                 )}
             </aside>
-            <div className="weighing-actions-dock print:hidden">
+            <TransactionReview
+                open={reviewOpen}
+                onOpenChange={setReviewOpen}
+                title="Periksa timbangan"
+                description="Pastikan konsumen, berat buah, harga, dan pembagian upah sudah benar. Harga dan upah dikunci saat disimpan."
+                rows={[
+                    { label: 'Konsumen', value: customer?.label ?? 'Belum dipilih' },
+                    { label: 'Mobil', value: vehicle?.label ?? 'Belum dipilih' },
+                    ...(summary.preview?.items.map((item) => ({
+                        label: item.fruit_type === 'TBS' ? 'TBS' : 'Sortir',
+                        value: `${weight(item.weight_grams)} × ${rupiah(item.buy_price_snapshot_idr ?? 0)}/kg`,
+                    })) ?? []),
+                    {
+                        label: 'Anggota muat',
+                        value: workers.map((worker) => worker.label).join(', '),
+                    },
+                    {
+                        label: 'Total upah muat',
+                        value: summary.preview
+                            ? rupiah(summary.preview.total_loading_wage_idr)
+                            : 'Belum dihitung',
+                    },
+                    {
+                        label: 'Total hak konsumen',
+                        value: summary.preview
+                            ? rupiah(summary.preview.total_purchase_idr)
+                            : 'Belum dihitung',
+                    },
+                ]}
+                confirmLabel="Simpan timbangan"
+                onConfirm={() => submit()}
+                disabled={!ready}
+            />
+            <div className="weighing-actions-dock mobile-action-dock print:hidden">
                 <div className="mx-auto min-w-0 max-w-7xl px-4 sm:px-8">
                     <div
                         role="group"
@@ -199,7 +248,7 @@ export default function WeighingForm(props: WeighingFormProps) {
                                 ) : (
                                     <Check aria-hidden="true" className="size-4" />
                                 )}
-                                {form.processing ? 'Menyimpan...' : 'Simpan Timbangan'}
+                                {form.processing ? 'Menyimpan...' : 'Periksa timbangan'}
                             </Button>
                         </div>
                     </div>

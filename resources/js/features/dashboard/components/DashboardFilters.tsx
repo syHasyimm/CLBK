@@ -22,7 +22,8 @@ export default function DashboardFilters({
     filters,
     vehicles,
     today,
-}: Pick<PeriodProps, 'filters' | 'vehicles'> & { today: string }) {
+    idPrefix = 'dashboard',
+}: Pick<PeriodProps, 'filters' | 'vehicles'> & { today: string; idPrefix?: string }) {
     const [data, setData] = useState({
         from: filters.from,
         to: filters.to,
@@ -102,12 +103,12 @@ export default function DashboardFilters({
                     <div key={key} className="min-w-0">
                         <Label
                             className="text-xs text-muted-foreground"
-                            htmlFor={'dashboard_' + key}
+                            htmlFor={idPrefix + '_' + key}
                         >
                             {key === 'from' ? 'Tanggal mulai' : 'Tanggal akhir'}
                         </Label>
                         <Input
-                            id={'dashboard_' + key}
+                            id={idPrefix + '_' + key}
                             className="mt-2 h-10 min-w-0 rounded-lg bg-background/50"
                             type="date"
                             required
@@ -116,23 +117,26 @@ export default function DashboardFilters({
                             disabled={busy}
                             aria-invalid={!!errors[key]}
                             aria-describedby={
-                                errors[key] ? 'dashboard_' + key + '_error' : undefined
+                                errors[key] ? idPrefix + '_' + key + '_error' : undefined
                             }
                             onChange={(event) => setData({ ...data, [key]: event.target.value })}
                         />
                         <InputError
-                            id={'dashboard_' + key + '_error'}
+                            id={idPrefix + '_' + key + '_error'}
                             message={errors[key]}
                             className="mt-1.5"
                         />
                     </div>
                 ))}
                 <div className="min-w-0">
-                    <Label className="text-xs text-muted-foreground" htmlFor="dashboard_vehicle">
+                    <Label
+                        className="text-xs text-muted-foreground"
+                        htmlFor={idPrefix + '_vehicle'}
+                    >
                         Mobil
                     </Label>
                     <NativeSelect
-                        id="dashboard_vehicle"
+                        id={idPrefix + '_vehicle'}
                         className="mt-2 rounded-lg bg-background/50"
                         value={data.vehicle_id}
                         disabled={busy}

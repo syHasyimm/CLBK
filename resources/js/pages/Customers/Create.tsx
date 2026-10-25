@@ -94,11 +94,11 @@ export default function Create({
                     </div>
                     <InputError message={form.errors.operation} className="sm:col-span-2" />
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-3 border-t px-5 py-5 sm:px-6">
-                    <Button variant="outline" asChild>
+                <div className="mobile-action-dock flex flex-wrap items-center justify-end gap-3 border-t px-5 py-5 sm:px-6">
+                    <Button variant="outline" asChild className="mobile-secondary-action">
                         <Link href={route('weighings.create')}>Batal</Link>
                     </Button>
-                    <Button type="submit" disabled={form.processing}>
+                    <Button type="submit" className="w-full lg:w-auto" disabled={form.processing}>
                         {form.processing ? (
                             <LoaderCircle
                                 className="size-4 animate-spin motion-reduce:animate-none"

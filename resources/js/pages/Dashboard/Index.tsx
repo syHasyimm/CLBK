@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import type { PeriodProps } from '@/features/reports/components/PeriodOverview';
 import DashboardOverview from '@/features/dashboard/components/DashboardOverview';
 import { dashboardDate } from '@/features/dashboard/components/DashboardFilters';
+import MobileHome from '@/features/dashboard/components/MobileHome';
 export default function Dashboard(props: PeriodProps) {
     const { auth } = usePage().props;
     const driverOrManager = auth.user.role !== 'cashier';
@@ -58,7 +59,10 @@ export default function Dashboard(props: PeriodProps) {
             }
         >
             <Head title="Dashboard" />
-            <DashboardOverview {...props} />
+            <MobileHome {...props} />
+            <div className="hidden lg:block print:block">
+                <DashboardOverview {...props} />
+            </div>
         </AppLayout>
     );
 }
